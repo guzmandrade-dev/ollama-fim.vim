@@ -1,4 +1,4 @@
-# vim-fim-ollama
+# ollama-fim.vim
 
 A Vim plugin for inline FIM (fill-in-the-middle) code completions powered by
 Ollama models. It is heavily inspired by the UX of `copilot.vim` — ghost
