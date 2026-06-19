@@ -42,22 +42,25 @@ endif
 if !exists('g:fim_ollama_max_suffix_chars')
     let g:fim_ollama_max_suffix_chars = 500
 endif
+if !exists('g:fim_ollama_map_tab')
+    let g:fim_ollama_map_tab = 1
+endif
 
 command! FimOllamaEnable  call fim_ollama#core#setup()
 command! FimOllamaDisable call fim_ollama#core#cleanup()
 command! FimOllamaToggle  call fim_ollama#core#toggle()
 
 " Default mappings (only mapped if not already defined by user).
-if !hasmapto('<Plug>(FimAccept)')
+if g:fim_ollama_map_tab && !hasmapto('<Plug>(FimAccept)')
     imap <silent> <Tab> <Plug>(FimAccept)
 endif
 if !hasmapto('<Plug>(FimDismiss)')
     imap <silent> <M-]> <Plug>(FimDismiss)
 endif
 
-" <Plug> handlers.
-imap <expr> <Plug>(FimAccept)  fim_ollama#core#accept()
-imap <silent> <Plug>(FimDismiss) <Cmd>call fim_ollama#core#dismiss()<CR>
+" <Plug> handlers (non-recursive so the Tab fallback doesn't loop).
+inoremap <expr> <Plug>(FimAccept)  fim_ollama#core#accept()
+inoremap <silent> <Plug>(FimDismiss) <Cmd>call fim_ollama#core#dismiss()<CR>
 
 " Auto-enable if configured.
 if g:fim_ollama_enabled

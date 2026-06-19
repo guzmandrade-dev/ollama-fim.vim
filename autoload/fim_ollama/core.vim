@@ -210,7 +210,7 @@ endfunction
 function! fim_ollama#core#accept() abort
     if !fim_ollama#ui#is_visible()
         " Let Tab pass through if no suggestion.
-        return "\u0009"
+        return "\<Tab>"
     endif
 
     let l:text = fim_ollama#ui#accept()
