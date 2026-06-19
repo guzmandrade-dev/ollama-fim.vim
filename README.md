@@ -43,9 +43,6 @@ git clone https://github.com/guzmandrade-dev/ollama-fim.vim.git
 Plug 'guzmandrade-dev/ollama-fim.vim', { 'rtp': 'vim' }
 ```
 
-> Note: while this lives inside the `fim-completions` repo, point the plugin
-> manager to the `vim/` subdirectory.
-
 ## Configuration
 
 Add to your `.vimrc` / `init.vim`:
@@ -133,4 +130,5 @@ vim/
 
 ## License
 
-Same as the parent project.
+MIT
+
