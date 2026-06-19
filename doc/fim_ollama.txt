@@ -1,0 +1,121 @@
+*fim_ollama.txt*  Fill-in-the-middle completions via Ollama for Vim.
+
+Author:  FIM Completions project
+License: Same as parent project
+
+================================================================================
+CONTENTS                                                   *fim_ollama_contents*
+
+1. Introduction ....................... |fim_ollama_intro|
+2. Installation ....................... |fim_ollama_install|
+3. Configuration ...................... |fim_ollama_config|
+4. Commands ........................... |fim_ollama_commands|
+5. Mappings ........................... |fim_ollama_mappings|
+6. Model families ..................... |fim_ollama_models|
+
+================================================================================
+1. INTRODUCTION                                             *fim_ollama_intro*
+
+fim_ollama.vim provides inline code completions for Vim using local Ollama
+models. It renders ghost text as you type and uses the same FIM prompt
+engineering as the FIM Completions VS Code extension.
+
+Features:
+  * Async completions using curl (no Python/Node required).
+  * Vim 9 ghost text via |textprop|, with a popup fallback for older Vim.
+  * File-level context: imports, definitions, recent code, scope hints.
+  * Support for rnj-1, deepseek, qwen, gemma, and mistral FIM formats.
+
+================================================================================
+2. INSTALLATION                                             *fim_ollama_install*
+
+With a package manager pointed at the `vim/` subdirectory (the plugin is not yet
+extracted to its own repository):
+>
+    Plug 'YOUR_NAME/fim-completions', { 'rtp': 'vim' }
+<
+Or with Vim packages:
+>
+    git clone https://github.com/YOUR_NAME/fim-completions.git \
+        ~/.vim/pack/plugins/start/fim-completions
+<
+
+================================================================================
+3. CONFIGURATION                                             *fim_ollama_config*
+
+Set these variables in your |.vimrc|.
+
+*g:fim_ollama_api_url*
+    Ollama base URL.
+    Default: "http://localhost:11434"
+
+*g:fim_ollama_model*
+    Model name passed to Ollama /api/generate.
+    Default: "rnj-1:8b-cloud"
+
+*g:fim_ollama_model_type*
+    FIM token family. One of: rnj-1, deepseek, qwen, gemma, mistral.
+    Default: "rnj-1"
+
+*g:fim_ollama_max_tokens*
+    Maximum tokens to generate.
+    Default: 256
+
+*g:fim_ollama_temperature*
+    Sampling temperature.
+    Default: 0.1
+
+*g:fim_ollama_include_file_context*
+    Include file-level context (imports, definitions, comments).
+    Default: 1
+
+*g:fim_ollama_include_scope_info*
+    Include "Currently in: ..." hint.
+    Default: 1
+
+*g:fim_ollama_file_context_chars*
+    Max characters of file context.
+    Default: 3000
+
+*g:fim_ollama_api_key*
+    API key sent as Bearer token. Falls back to $OLLAMA_API_KEY.
+    Default: unset
+
+================================================================================
+4. COMMANDS                                                *fim_ollama_commands*
+
+*:FimOllamaEnable*
+    Turn completions on.
+
+*:FimOllamaDisable*
+    Turn completions off and cancel pending requests.
+
+*:FimOllamaToggle*
+    Toggle completions on/off.
+
+================================================================================
+5. MAPPINGS                                                *fim_ollama_mappings*
+
+Default insert-mode mappings:
+    <Tab>      Accept ghost suggestion.
+    <M-]>      Dismiss ghost suggestion.
+
+To customize, map before the plugin loads:
+>
+    imap <silent> <C-J> <Plug>(FimAccept)
+    imap <silent> <C-L> <Plug>(FimDismiss)
+<
+
+================================================================================
+6. MODEL FAMILIES                                            *fim_ollama_models*
+
+The following families are supported, matching the prompt tokens each model
+expects:
+
+    rnj-1    <|pre_fim|> ... <|suf_fim|> ... <|mid_fim|>
+    deepseek <|fim_begin|> ... <|fim_hole|> ... <|fim_end|>
+    qwen     <|fim_prefix|> ... <|fim_suffix|> ... <|fim_middle|>
+    gemma    <|fim_prefix|> ... <|fim_middle|> ... <|fim_suffix|>
+    mistral  <|fim_prefix|> ... <|fim_suffix|> ... <|fim_middle|>
+
+ vim:tw=78:ts=8:ft=help:norl:
