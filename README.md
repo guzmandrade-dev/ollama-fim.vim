@@ -1,13 +1,10 @@
 # vim-fim-ollama
 
 A Vim plugin for inline FIM (fill-in-the-middle) code completions powered by
-local Ollama models. It is heavily inspired by the UX of `copilot.vim` — ghost
+Ollama models. It is heavily inspired by the UX of `copilot.vim` — ghost
 text suggestions appear as you type and can be accepted with `Tab` — but it
 uses your own Ollama instance and the same FIM prompt engineering from the
-`fim-completions` VS Code extension.
-
-> **Status:** initial port into `vim/` folder. This will be extracted into its
-> own repository once it stabilizes.
+`ollama-fim` VS Code extension https://marketplace.visualstudio.com/items?itemName=guzmandrade-dev.ollama-fim.
 
 ## Features
 
@@ -37,13 +34,13 @@ uses your own Ollama instance and the same FIM prompt engineering from the
 mkdir -p ~/.vim/pack/plugins/start
 cd ~/.vim/pack/plugins/start
 # Once extracted to its own repo:
-git clone https://github.com/YOUR_NAME/vim-fim-ollama.git
+git clone https://github.com/guzmandrade-dev/ollama-fim.vim.git
 ```
 
 ### Using vim-plug
 
 ```vim
-Plug 'YOUR_NAME/vim-fim-ollama', { 'rtp': 'vim' }
+Plug 'guzmandrade-dev/ollama-fim.vim', { 'rtp': 'vim' }
 ```
 
 > Note: while this lives inside the `fim-completions` repo, point the plugin
