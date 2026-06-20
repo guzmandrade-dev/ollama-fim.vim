@@ -33,7 +33,7 @@ uses your own Ollama instance and the same FIM prompt engineering from the
 ```bash
 mkdir -p ~/.vim/pack/plugins/start
 cd ~/.vim/pack/plugins/start
-# Once extracted to its own repo:
+
 git clone https://github.com/guzmandrade-dev/ollama-fim.vim.git
 ```
 
