@@ -1,13 +1,15 @@
 " Ghost text UI: render inline suggestions and handle accept/dismiss.
-" Uses textprop on Vim 9+; falls back to a popup/preview window on older Vim.
+" Uses popup_atcursor by default (floating window, never modifies buffer).
+" Falls back to textprop on older Vim if popup is unavailable.
 
 let s:ghost_text = ''
 let s:ghost_bufnr = -1
 let s:ghost_prop_type = 'FimOllamaGhostText'
 let s:ghost_prop_id = -1
 let s:has_textprop = has('textprop')
+let s:has_popup = exists('*popup_atcursor')
 
-" Initialize textprop type if available.
+" Initialize textprop type if available (for fallback only).
 function! fim_ollama#ui#init() abort
     if s:has_textprop
         try
@@ -28,11 +30,24 @@ function! fim_ollama#ui#show(bufnr, line, col, text) abort
     let s:ghost_text = a:text
     let s:ghost_bufnr = a:bufnr
 
-    if s:has_textprop && a:bufnr == bufnr('%')
+    " Prefer popup_atcursor - it's a floating window that never modifies the buffer.
+    if s:has_popup
+        call s:show_popup(a:line, a:col, a:text)
+    elseif s:has_textprop && a:bufnr == bufnr('%')
         call s:show_textprop(a:line, a:col, a:text)
-    else
-        call s:show_fallback(a:text)
     endif
+endfunction
+
+function! s:show_popup(line, col, text) abort
+    let l:lines = split(a:text, "\n")
+    let l:maxheight = min([len(l:lines), 10])
+    let s:ghost_popup_id = popup_atcursor(l:lines, {
+        \ 'highlight': 'Comment',
+        \ 'padding': [0, 1, 0, 1],
+        \ 'border': [],
+        \ 'moved': 'any',
+        \ 'maxheight': l:maxheight,
+        \ })
 endfunction
 
 function! s:show_textprop(line, col, text) abort
@@ -51,20 +66,8 @@ function! s:show_textprop(line, col, text) abort
     catch
         " If textprop fails (e.g., unsupported column), fall back silently.
         let s:ghost_prop_id = -1
-        call s:show_fallback(a:text)
+        call s:show_popup(a:line, a:col, a:text)
     endtry
-endfunction
-
-function! s:show_fallback(text) abort
-    " Minimal fallback: show suggestion in a small popup near cursor.
-    if exists('*popup_atcursor')
-        let s:ghost_popup_id = popup_atcursor(split(a:text, "\n"), {
-            \ 'highlight': 'Comment',
-            \ 'padding': [0, 1, 0, 1],
-            \ 'border': [],
-            \ 'moved': 'any',
-            \ })
-    endif
 endfunction
 
 function! fim_ollama#ui#hide(...) abort
