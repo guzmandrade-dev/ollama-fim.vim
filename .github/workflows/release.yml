@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name to release (e.g. v1.0.0)'
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Vim
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y vim
+
+      - name: Build Vimball (.vmb)
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          VMB_FILE="ollama-fim-${VERSION}.vmb"
+
+          # Start the Vimball archive.
+          vim -u NONE -N -es -c 'set fileformat=unix' \
+            -c 'call mkdir("build", "p")' \
+            -c 'quit'
+
+          # Generate the Vimball from a temp Vim script.
+          cat > build_vimball.vim <<'VIMSCRIPT'
+            let s:files = [
+              \ 'plugin/fim_ollama.vim',
+              \ 'autoload/fim_ollama/client.vim',
+              \ 'autoload/fim_ollama/context.vim',
+              \ 'autoload/fim_ollama/core.vim',
+              \ 'autoload/fim_ollama/prompt.vim',
+              \ 'autoload/fim_ollama/ui.vim',
+              \ 'doc/fim_ollama.txt',
+              \ 'README.md',
+              \ 'LICENSE',
+              \ ]
+
+            let s:vmb = 'build/ollama-fim-' . $VERSION . '.vmb'
+
+            " Create the Vimball header.
+            call writefile([
+              \ '" Vimball Archiver by GitHub Action',
+              \ 'UseVimball',
+              \ 'finish',
+              \ ], s:vmb)
+
+            " Append each file with the Vimball record format.
+            for s:f in s:files
+              let s:content = readfile(s:f)
+              call writefile([s:f, len(s:content)] + s:content, s:vmb, 'a')
+            endfor
+
+            quit
+          VIMSCRIPT
+
+          VERSION="$VERSION" vim -u NONE -N -es -c 'source build_vimball.vim'
+
+          echo "Built: $(ls -la build/*.vmb)"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          # Extract annotated tag message, or use commit history.
+          NOTES=$(git log --pretty=format:'- %s' "$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parent=0 HEAD)"..HEAD 2>/dev/null || git log --oneline -10)
+          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          body: ${{ steps.notes.outputs.notes }}
+          files: build/*.vmb
+          draft: false
+          prerelease: false
+
+      - name: Submit to vim.org scripts
+        if: ${{ vars.VIMORG_USER != '' }}
+        env:
+          VIMORG_USER: ${{ secrets.VIMORG_USER }}
+          VIMORG_PASS: ${{ secrets.VIMORG_PASS }}
+          VIMORG_SCRIPT_ID: ${{ secrets.VIMORG_SCRIPT_ID }}
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          VMB_FILE="build/ollama-fim-${VERSION}.vmb"
+
+          # vim.org uses a form-based upload to:
+          # https://www.vim.org/scripts/script.php?script_id=<ID>
+          # The upload endpoint requires login credentials and a session cookie.
+
+          # Log in and obtain a session cookie.
+          LOGIN_RESPONSE=$(curl -s -c cookies.txt -b cookies.txt \
+            -X POST \
+            "https://www.vim.org/login.php" \
+            -d "userName=${VIMORG_USER}" \
+            -d "userPwd=${VIMORG_PASS}" \
+            -d "redirect=/scripts/"
+
+          # Check if login succeeded by looking for a logout link.
+          if ! grep -q "logout" cookies.txt 2>/dev/null; then
+            echo "::warning::vim.org login may have failed, skipping upload"
+            exit 0
+          fi
+
+          # Upload the new version to the script page.
+          curl -s -b cookies.txt -c cookies.txt \
+            -X POST \
+            "https://www.vim.org/scripts/script.php?script_id=${VIMORG_SCRIPT_ID}" \
+            -F "vim_script_id=${VIMORG_SCRIPT_ID}" \
+            -F "script_name=ollama-fim" \
+            -F "vim_version=9.0" \
+            -F "script_version=${VERSION}" \
+            -F "script_type=utility" \
+            -F "script_license=MIT" \
+            -F "script_text=Inline FIM code completions in Vim powered by Ollama models." \
+            -F "script_file=@${VMB_FILE}" \
+            -F "submit=Upload"
+
+          echo "Upload to vim.org complete"
