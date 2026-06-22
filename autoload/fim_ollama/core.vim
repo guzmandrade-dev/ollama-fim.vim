@@ -5,10 +5,7 @@ let s:debounce_timer = -1
 let s:request_counter = 0
 let s:accept_lock = 0
 let s:last_accepted_text = ''
-let s:last_accept_pos = [0, 0]
 let s:chars_since_accept = 999
-let s:suggestion_ring = []
-let s:suggestion_ring_idx = -1
 let s:current_seed = 0
 let s:defaults = {
     \ 'api_url': 'http://localhost:11434',
@@ -66,36 +63,25 @@ function! fim_ollama#core#enabled() abort
     return s:enabled
 endfunction
 
-" Called when user types a genuine character (InsertCharPre).
+" Called when a character is about to be inserted.
 function! fim_ollama#core#on_insert_char() abort
-    if s:accept_lock
-        let s:accept_lock = 0
-    endif
-
-    " Count genuine keystrokes after an acceptance. Only after 3+ new
-    " characters do we allow the model to suggest again.
     let s:chars_since_accept += 1
-
-    call fim_ollama#core#schedule_request()
 endfunction
 
-" Called after buffer changed (TextChangedI). This fires after the accepted
-" text is inserted, but also after every backspace, paste, etc.
-" We do NOT count this toward the post-accept cooldown.
+" Called after buffer text changed in insert mode.
 function! fim_ollama#core#on_text_changed() abort
     call fim_ollama#core#schedule_request()
 endfunction
 
 function! fim_ollama#core#schedule_request() abort
     if !s:enabled | return | endif
-    if s:accept_lock | return | endif
 
-    " After accepting a suggestion, require 3 genuine keystrokes typed
-    " by the user before requesting again. This prevents the model from
-    " repeating the same completion because the context barely changed.
-    if s:chars_since_accept < 3
-        return
-    endif
+    " After accepting a suggestion, suppress ALL requests for a short time
+    " AND until at least 3 genuine keystrokes have been typed. This prevents
+    " the model from immediately repeating the same suggestion because the
+    " context barely changed.
+    if s:accept_lock | return | endif
+    if s:chars_since_accept < 3 | return | endif
 
     call fim_ollama#core#cancel_debounce()
     let s:debounce_timer = timer_start(s:get('debounce_ms'), function('s:do_request'))
@@ -126,7 +112,6 @@ function! s:do_request(timer_id) abort
     let s:request_counter += 1
     let l:request_id = s:request_counter
 
-    " Bump the seed for this request so repeated requests can differ.
     let s:current_seed += 1
 
     let l:prefix = s:get_prefix(l:bufnr, l:line, l:col)
@@ -143,17 +128,6 @@ function! s:do_request(timer_id) abort
     let l:line_prefix = strpart(getline('.'), 0, l:col - 1)
     if empty(trim(l:line_prefix)) && empty(trim(l:suffix))
         return
-    endif
-
-    " Clear the last-accepted cache when the cursor has moved to a
-    " different line, so the block only applies to immediate re-suggestions
-    " at the same location (not across different edit positions).
-    if !empty(s:last_accepted_text)
-        let l:prev_line = s:last_accept_pos[0]
-        let l:prev_col  = s:last_accept_pos[1]
-        if l:line != l:prev_line || abs(l:col - l:prev_col) > 10
-            let s:last_accepted_text = ''
-        endif
     endif
 
     let l:enriched_prefix = s:enrich_prefix(l:bufnr, l:line, l:prefix)
@@ -188,20 +162,17 @@ function! s:on_completion(request_id, bufnr, line, col, returned_request_id, tex
         return
     endif
 
-    " Reject the suggestion if it's identical to the one we just accepted.
-    if !empty(s:last_accepted_text) && a:text ==# s:last_accepted_text
-        return
+    " Reject the suggestion if it's identical to the one we just accepted
+    " OR if it starts with what we already accepted (prevents the model
+    " from offering the same prefix again, especially for comments).
+    if !empty(s:last_accepted_text)
+        if a:text ==# s:last_accepted_text
+            return
+        endif
+        if stridx(a:text, s:last_accepted_text) == 0
+            return
+        endif
     endif
-
-    " Reject if the suggestion starts with what we already accepted.
-    " This prevents the model from offering the same prefix again.
-    if !empty(s:last_accepted_text) && stridx(a:text, s:last_accepted_text) == 0
-        return
-    endif
-
-    " Store in ring for Alt-] cycling.
-    let s:suggestion_ring = [a:text]
-    let s:suggestion_ring_idx = 0
 
     call fim_ollama#ui#show(a:bufnr, a:line, a:col, a:text)
 endfunction
@@ -283,27 +254,41 @@ function! fim_ollama#core#accept() abort
 
     " Remember what we accepted so we can reject identical re-suggestions.
     let s:last_accepted_text = l:text
-    let s:last_accept_pos = getcurpos()[1:2]
 
-    " Lock down: prevent TextChangedI from firing a new request.
-    " The lock is released only on the next genuine InsertCharPre keystroke.
+    " Lock down: prevent ANY requests from firing. The lock is released
+    " by a timer after the immediate TextChangedI/InsertCharPre events
+    " from the insertion have settled. This is more reliable than
+    " clearing the lock on InsertCharPre because InsertCharPre may also
+    " fire for the returned text itself in some Vim versions.
     let s:accept_lock = 1
+    let s:chars_since_accept = 0
     call fim_ollama#core#cancel_debounce()
     call fim_ollama#client#cancel()
     call fim_ollama#ui#hide()
 
-    " Reset the genuine-keystroke counter. We require 3 real characters
-    " before asking the model again — otherwise it often repeats the same
-    " suggestion because the context barely changed.
-    let s:chars_since_accept = 0
-    let s:suggestion_ring = []
-    let s:suggestion_ring_idx = -1
+    " Release the lock after 800ms. This is long enough for the
+    " TextChangedI from the accepted text to settle, but short enough
+    " that the user can still get a fresh suggestion after typing a few
+    " characters.
+    call timer_start(800, function('s:release_accept_lock'))
 
     " Insert the completion text at cursor.
     return l:text
 endfunction
 
-" Cycle to the next suggestion using the stored ring or requesting a new one.
+function! s:release_accept_lock(timer_id) abort
+    let s:accept_lock = 0
+endfunction
+
+" Dismiss the current suggestion and cancel any pending request.
+function! fim_ollama#core#dismiss() abort
+    let s:last_accepted_text = ''
+    call fim_ollama#ui#hide()
+    call fim_ollama#client#cancel()
+    call fim_ollama#core#cancel_debounce()
+endfunction
+
+" Request a fresh alternative suggestion at the current cursor position.
 function! fim_ollama#core#next_suggestion() abort
     if !fim_ollama#ui#is_visible()
         return
@@ -314,14 +299,6 @@ function! fim_ollama#core#next_suggestion() abort
     let l:col = l:cur[2]
     let l:bufnr = bufnr('%')
 
-    " If we have more stored suggestions, show the next one.
-    if len(s:suggestion_ring) > 1 && s:suggestion_ring_idx + 1 < len(s:suggestion_ring)
-        let s:suggestion_ring_idx += 1
-        call fim_ollama#ui#show(l:bufnr, l:line, l:col, s:suggestion_ring[s:suggestion_ring_idx])
-        return
-    endif
-
-    " Otherwise, issue a fresh request with a different seed to get a new suggestion.
     let s:current_seed += 1
 
     let l:prefix = s:get_prefix(l:bufnr, l:line, l:col)
@@ -363,18 +340,7 @@ function! s:on_next_suggestion_completion(request_id, bufnr, line, col, returned
         return
     endif
 
-    call add(s:suggestion_ring, a:text)
-    let s:suggestion_ring_idx = len(s:suggestion_ring) - 1
     call fim_ollama#ui#show(a:bufnr, a:line, a:col, a:text)
-endfunction
-
-function! fim_ollama#core#dismiss() abort
-    let s:last_accepted_text = ''
-    let s:suggestion_ring = []
-    let s:suggestion_ring_idx = -1
-    call fim_ollama#ui#hide()
-    call fim_ollama#client#cancel()
-    call fim_ollama#core#cancel_debounce()
 endfunction
 
 function! fim_ollama#core#cleanup() abort
