@@ -98,12 +98,12 @@ Set these variables in your |.vimrc|.
 
 Default insert-mode mappings:
     <Tab>      Accept ghost suggestion.
-    <M-]>      Dismiss ghost suggestion.
+    <M-]>      Cycle to the next suggestion (or request a new one from the model).
 
 To customize, map before the plugin loads:
 >
     imap <silent> <C-J> <Plug>(FimAccept)
-    imap <silent> <C-L> <Plug>(FimDismiss)
+    imap <silent> <C-L> <Plug>(FimNext)
 <
 
 ================================================================================

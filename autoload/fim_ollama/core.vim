@@ -3,8 +3,13 @@
 let s:enabled = 1
 let s:debounce_timer = -1
 let s:request_counter = 0
-
-" Default settings.
+let s:accept_lock = 0
+let s:last_accepted_text = ''
+let s:last_accept_pos = [0, 0]
+let s:post_accept_cooldown = 0
+let s:suggestion_ring = []
+let s:suggestion_ring_idx = -1
+let s:current_seed = 0
 let s:defaults = {
     \ 'api_url': 'http://localhost:11434',
     \ 'model': 'rnj-1:8b-cloud',
@@ -35,7 +40,7 @@ function! fim_ollama#core#setup() abort
     augroup FimOllama
         autocmd!
         if s:enabled
-            autocmd InsertCharPre * call fim_ollama#core#schedule_request()
+            autocmd InsertCharPre * call fim_ollama#core#on_insert_char()
             autocmd TextChangedI  * call fim_ollama#core#schedule_request()
             autocmd InsertLeave   * call fim_ollama#core#cleanup()
             autocmd CursorMovedI  * call fim_ollama#core#dismiss_if_moved()
@@ -63,9 +68,29 @@ endfunction
 
 function! fim_ollama#core#schedule_request() abort
     if !s:enabled | return | endif
+    if s:accept_lock | return | endif
 
     call fim_ollama#core#cancel_debounce()
+
+    " After accepting a suggestion, wait for N genuine keystrokes
+    " before asking the model again. This avoids the model repeating
+    " the same completion immediately because the context barely changed.
+    if s:post_accept_cooldown > 0
+        let s:post_accept_cooldown -= 1
+        return
+    endif
+
     let s:debounce_timer = timer_start(s:get('debounce_ms'), function('s:do_request'))
+endfunction
+
+" Called on every InsertCharPre — releases the accept lock and counts
+" genuine keystrokes toward the cooldown. When the cooldown reaches zero
+" a fresh request is scheduled.
+function! fim_ollama#core#on_insert_char() abort
+    if s:accept_lock
+        let s:accept_lock = 0
+    endif
+    call fim_ollama#core#schedule_request()
 endfunction
 
 function! fim_ollama#core#cancel_debounce() abort
@@ -93,6 +118,9 @@ function! s:do_request(timer_id) abort
     let s:request_counter += 1
     let l:request_id = s:request_counter
 
+    " Bump the seed for this request so repeated requests can differ.
+    let s:current_seed += 1
+
     let l:prefix = s:get_prefix(l:bufnr, l:line, l:col)
     let l:suffix = s:get_suffix(l:bufnr, l:line, l:col)
 
@@ -109,6 +137,17 @@ function! s:do_request(timer_id) abort
         return
     endif
 
+    " Clear the last-accepted cache when the cursor has moved to a
+    " different line, so the block only applies to immediate re-suggestions
+    " at the same location (not across different edit positions).
+    if !empty(s:last_accepted_text)
+        let l:prev_line = s:last_accept_pos[0]
+        let l:prev_col  = s:last_accept_pos[1]
+        if l:line != l:prev_line || abs(l:col - l:prev_col) > 10
+            let s:last_accepted_text = ''
+        endif
+    endif
+
     let l:enriched_prefix = s:enrich_prefix(l:bufnr, l:line, l:prefix)
 
     let l:model_type = s:get('model_type')
@@ -122,6 +161,7 @@ function! s:do_request(timer_id) abort
         \ 'stop_tokens': l:stop_tokens,
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': s:get('temperature'),
+        \ 'seed': s:current_seed,
         \ }
 
     call fim_ollama#client#request(l:request_id, l:config, function('s:on_completion', [l:request_id, l:bufnr, l:line, l:col]))
@@ -139,6 +179,15 @@ function! s:on_completion(request_id, bufnr, line, col, returned_request_id, tex
     if l:cur[1] != a:line || l:cur[2] != a:col
         return
     endif
+
+    " Reject the suggestion if it's identical to the one we just accepted.
+    if !empty(s:last_accepted_text) && a:text ==# s:last_accepted_text
+        return
+    endif
+
+    " Store in ring for Alt-] cycling. Keep last 5 suggestions.
+    let s:suggestion_ring = [a:text]
+    let s:suggestion_ring_idx = 0
 
     call fim_ollama#ui#show(a:bufnr, a:line, a:col, a:text)
 endfunction
@@ -210,7 +259,7 @@ endfunction
 function! fim_ollama#core#accept() abort
     if !fim_ollama#ui#is_visible()
         " Let Tab pass through if no suggestion.
-        return "\<Tab>"
+        return "\u0009"
     endif
 
     let l:text = fim_ollama#ui#accept()
@@ -218,17 +267,105 @@ function! fim_ollama#core#accept() abort
         return ''
     endif
 
+    " Remember what we accepted so we can reject identical re-suggestions.
+    let s:last_accepted_text = l:text
+    let s:last_accept_pos = getcurpos()[1:2]
+
+    " Lock down: prevent TextChangedI from firing a new request.
+    " The lock is released only on the next genuine InsertCharPre keystroke.
+    let s:accept_lock = 1
+    call fim_ollama#core#cancel_debounce()
+    call fim_ollama#client#cancel()
+    call fim_ollama#ui#hide()
+
+    " Cooldown: require 3 genuine keystrokes before next request.
+    " This prevents the model from immediately repeating the same suggestion
+    " because the context barely changed after the acceptance.
+    let s:post_accept_cooldown = 3
+    let s:suggestion_ring = []
+    let s:suggestion_ring_idx = -1
+
     " Insert the completion text at cursor.
     return l:text
 endfunction
 
+" Cycle to the next suggestion using the stored ring or requesting a new one.
+function! fim_ollama#core#next_suggestion() abort
+    if !fim_ollama#ui#is_visible()
+        return
+    endif
+
+    let l:cur = getcurpos()
+    let l:line = l:cur[1]
+    let l:col = l:cur[2]
+    let l:bufnr = bufnr('%')
+
+    " If we have more stored suggestions, show the next one.
+    if len(s:suggestion_ring) > 1 && s:suggestion_ring_idx + 1 < len(s:suggestion_ring)
+        let s:suggestion_ring_idx += 1
+        call fim_ollama#ui#show(l:bufnr, l:line, l:col, s:suggestion_ring[s:suggestion_ring_idx])
+        return
+    endif
+
+    " Otherwise, issue a fresh request with a different seed to get a new suggestion.
+    let s:current_seed += 1
+
+    let l:prefix = s:get_prefix(l:bufnr, l:line, l:col)
+    let l:suffix = s:get_suffix(l:bufnr, l:line, l:col)
+
+    let l:model_type = s:get('model_type')
+    let l:prompt = fim_ollama#prompt#build_fim_prompt(l:prefix, l:suffix, l:model_type)
+    let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+
+    let s:request_counter += 1
+    let l:request_id = s:request_counter
+
+    let l:config = {
+        \ 'url': s:get('api_url'),
+        \ 'model': s:get('model'),
+        \ 'prompt': l:prompt,
+        \ 'stop_tokens': l:stop_tokens,
+        \ 'max_tokens': s:get('max_tokens'),
+        \ 'temperature': 0.7,
+        \ 'seed': s:current_seed,
+        \ }
+
+    call fim_ollama#client#cancel()
+    call fim_ollama#core#cancel_debounce()
+
+    call fim_ollama#client#request(l:request_id, l:config, function('s:on_next_suggestion_completion', [l:request_id, l:bufnr, l:line, l:col]))
+endfunction
+
+function! s:on_next_suggestion_completion(request_id, bufnr, line, col, returned_request_id, text) abort
+    if a:request_id != a:returned_request_id
+        return
+    endif
+    if a:bufnr != bufnr('%') || mode() !=# 'i'
+        return
+    endif
+
+    let l:cur = getcurpos()
+    if l:cur[1] != a:line || l:cur[2] != a:col
+        return
+    endif
+
+    call add(s:suggestion_ring, a:text)
+    let s:suggestion_ring_idx = len(s:suggestion_ring) - 1
+    call fim_ollama#ui#show(a:bufnr, a:line, a:col, a:text)
+endfunction
+
 function! fim_ollama#core#dismiss() abort
+    let s:last_accepted_text = ''
+    let s:suggestion_ring = []
+    let s:suggestion_ring_idx = -1
     call fim_ollama#ui#hide()
     call fim_ollama#client#cancel()
     call fim_ollama#core#cancel_debounce()
 endfunction
 
 function! fim_ollama#core#cleanup() abort
+    let s:accept_lock = 0
+    let s:last_accepted_text = ''
     call fim_ollama#ui#hide()
     call fim_ollama#client#cancel()
     call fim_ollama#core#cancel_debounce()

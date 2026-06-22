@@ -54,13 +54,14 @@ command! FimOllamaToggle  call fim_ollama#core#toggle()
 if g:fim_ollama_map_tab && !hasmapto('<Plug>(FimAccept)')
     imap <silent> <Tab> <Plug>(FimAccept)
 endif
-if !hasmapto('<Plug>(FimDismiss)')
-    imap <silent> <M-]> <Plug>(FimDismiss)
+if !hasmapto('<Plug>(FimNext)')
+    imap <silent> <M-]> <Plug>(FimNext)
 endif
 
 " <Plug> handlers (non-recursive so the Tab fallback doesn't loop).
 inoremap <expr> <Plug>(FimAccept)  fim_ollama#core#accept()
 inoremap <silent> <Plug>(FimDismiss) <Cmd>call fim_ollama#core#dismiss()<CR>
+inoremap <silent> <Plug>(FimNext)   <Cmd>call fim_ollama#core#next_suggestion()<CR>
 
 " Auto-enable if configured.
 if g:fim_ollama_enabled
