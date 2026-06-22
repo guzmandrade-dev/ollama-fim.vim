@@ -174,7 +174,19 @@ function! s:on_completion(request_id, bufnr, line, col, returned_request_id, tex
         endif
     endif
 
-    call fim_ollama#ui#show(a:bufnr, a:line, a:col, a:text)
+    " Strip any text that the model echoed back from the current line prefix.
+    " Some FIM models return the full line including what's already typed;
+    " we only want to show the genuinely new completion part.
+    let l:text = a:text
+    let l:line_prefix = strpart(getline('.'), 0, a:col - 1)
+    if !empty(l:line_prefix) && stridx(l:text, l:line_prefix) == 0 && len(l:text) > len(l:line_prefix)
+        let l:text = strpart(l:text, len(l:line_prefix))
+        if empty(trim(l:text, " \t\n\r"))
+            return
+        endif
+    endif
+
+    call fim_ollama#ui#show(a:bufnr, a:line, a:col, l:text)
 endfunction
 
 function! s:get_prefix(bufnr, line, col) abort
