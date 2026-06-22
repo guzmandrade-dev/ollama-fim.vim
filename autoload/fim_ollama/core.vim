@@ -6,7 +6,7 @@ let s:request_counter = 0
 let s:accept_lock = 0
 let s:last_accepted_text = ''
 let s:last_accept_pos = [0, 0]
-let s:post_accept_cooldown = 0
+let s:chars_since_accept = 999
 let s:suggestion_ring = []
 let s:suggestion_ring_idx = -1
 let s:current_seed = 0
@@ -41,7 +41,7 @@ function! fim_ollama#core#setup() abort
         autocmd!
         if s:enabled
             autocmd InsertCharPre * call fim_ollama#core#on_insert_char()
-            autocmd TextChangedI  * call fim_ollama#core#schedule_request()
+            autocmd TextChangedI  * call fim_ollama#core#on_text_changed()
             autocmd InsertLeave   * call fim_ollama#core#cleanup()
             autocmd CursorMovedI  * call fim_ollama#core#dismiss_if_moved()
         endif
@@ -66,31 +66,39 @@ function! fim_ollama#core#enabled() abort
     return s:enabled
 endfunction
 
-function! fim_ollama#core#schedule_request() abort
-    if !s:enabled | return | endif
-    if s:accept_lock | return | endif
-
-    call fim_ollama#core#cancel_debounce()
-
-    " After accepting a suggestion, wait for N genuine keystrokes
-    " before asking the model again. This avoids the model repeating
-    " the same completion immediately because the context barely changed.
-    if s:post_accept_cooldown > 0
-        let s:post_accept_cooldown -= 1
-        return
-    endif
-
-    let s:debounce_timer = timer_start(s:get('debounce_ms'), function('s:do_request'))
-endfunction
-
-" Called on every InsertCharPre — releases the accept lock and counts
-" genuine keystrokes toward the cooldown. When the cooldown reaches zero
-" a fresh request is scheduled.
+" Called when user types a genuine character (InsertCharPre).
 function! fim_ollama#core#on_insert_char() abort
     if s:accept_lock
         let s:accept_lock = 0
     endif
+
+    " Count genuine keystrokes after an acceptance. Only after 3+ new
+    " characters do we allow the model to suggest again.
+    let s:chars_since_accept += 1
+
     call fim_ollama#core#schedule_request()
+endfunction
+
+" Called after buffer changed (TextChangedI). This fires after the accepted
+" text is inserted, but also after every backspace, paste, etc.
+" We do NOT count this toward the post-accept cooldown.
+function! fim_ollama#core#on_text_changed() abort
+    call fim_ollama#core#schedule_request()
+endfunction
+
+function! fim_ollama#core#schedule_request() abort
+    if !s:enabled | return | endif
+    if s:accept_lock | return | endif
+
+    " After accepting a suggestion, require 3 genuine keystrokes typed
+    " by the user before requesting again. This prevents the model from
+    " repeating the same completion because the context barely changed.
+    if s:chars_since_accept < 3
+        return
+    endif
+
+    call fim_ollama#core#cancel_debounce()
+    let s:debounce_timer = timer_start(s:get('debounce_ms'), function('s:do_request'))
 endfunction
 
 function! fim_ollama#core#cancel_debounce() abort
@@ -185,7 +193,13 @@ function! s:on_completion(request_id, bufnr, line, col, returned_request_id, tex
         return
     endif
 
-    " Store in ring for Alt-] cycling. Keep last 5 suggestions.
+    " Reject if the suggestion starts with what we already accepted.
+    " This prevents the model from offering the same prefix again.
+    if !empty(s:last_accepted_text) && stridx(a:text, s:last_accepted_text) == 0
+        return
+    endif
+
+    " Store in ring for Alt-] cycling.
     let s:suggestion_ring = [a:text]
     let s:suggestion_ring_idx = 0
 
@@ -278,10 +292,10 @@ function! fim_ollama#core#accept() abort
     call fim_ollama#client#cancel()
     call fim_ollama#ui#hide()
 
-    " Cooldown: require 3 genuine keystrokes before next request.
-    " This prevents the model from immediately repeating the same suggestion
-    " because the context barely changed after the acceptance.
-    let s:post_accept_cooldown = 3
+    " Reset the genuine-keystroke counter. We require 3 real characters
+    " before asking the model again — otherwise it often repeats the same
+    " suggestion because the context barely changed.
+    let s:chars_since_accept = 0
     let s:suggestion_ring = []
     let s:suggestion_ring_idx = -1
 
@@ -366,6 +380,7 @@ endfunction
 function! fim_ollama#core#cleanup() abort
     let s:accept_lock = 0
     let s:last_accepted_text = ''
+    let s:chars_since_accept = 999
     call fim_ollama#ui#hide()
     call fim_ollama#client#cancel()
     call fim_ollama#core#cancel_debounce()

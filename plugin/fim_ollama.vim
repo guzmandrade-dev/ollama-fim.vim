@@ -49,13 +49,18 @@ endif
 command! FimOllamaEnable  call fim_ollama#core#setup()
 command! FimOllamaDisable call fim_ollama#core#cleanup()
 command! FimOllamaToggle  call fim_ollama#core#toggle()
+command! FimOllamaDismiss call fim_ollama#core#dismiss()
+command! FimOllamaNext    call fim_ollama#core#next_suggestion()
 
 " Default mappings (only mapped if not already defined by user).
 if g:fim_ollama_map_tab && !hasmapto('<Plug>(FimAccept)')
     imap <silent> <Tab> <Plug>(FimAccept)
 endif
 if !hasmapto('<Plug>(FimNext)')
+    " Alt+] is the default, but many terminals swallow it. Provide Ctrl+] as a
+    " fallback so the user can always cycle suggestions.
     imap <silent> <M-]> <Plug>(FimNext)
+    imap <silent> <C-]> <Plug>(FimNext)
 endif
 
 " <Plug> handlers (non-recursive so the Tab fallback doesn't loop).

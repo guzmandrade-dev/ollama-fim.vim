@@ -6,12 +6,17 @@ let s:pending_request_id = 0
 let s:output_buffer = ''
 
 " Build a JSON payload for Ollama /api/generate.
-function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens, temperature) abort
+function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens, temperature, ...) abort
     let l:options = {
         \ 'num_predict': a:max_tokens,
         \ 'temperature': a:temperature,
         \ 'stop': a:stop_tokens,
         \ }
+
+    " Optional seed (for reproducible/different suggestions on cycle).
+    if a:0 >= 1 && !empty(a:1)
+        let l:options.seed = a:1
+    endif
 
     let l:payload = {
         \ 'model': a:model,
@@ -69,12 +74,14 @@ function! fim_ollama#client#request(request_id, config, callback) abort
     let s:pending_request_id = a:request_id
     let s:output_buffer = ''
 
+    let l:seed = get(a:config, 'seed', v:null)
     let l:payload = fim_ollama#client#build_payload(
         \ a:config.model,
         \ a:config.prompt,
         \ a:config.stop_tokens,
         \ a:config.max_tokens,
         \ a:config.temperature,
+        \ l:seed,
         \ )
 
     let l:body = fim_ollama#client#json_encode(l:payload)
