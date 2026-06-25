@@ -1,15 +1,15 @@
 # ollama-fim.vim
 
 A Vim plugin for inline FIM (fill-in-the-middle) code completions powered by
-Ollama models. It is heavily inspired by the UX of `copilot.vim` — ghost
-text suggestions appear as you type and can be accepted with `Tab` — but it
-uses your own Ollama instance and the same FIM prompt engineering from the
+Ollama models. It is heavily inspired by the UX of `copilot.vim` — suggestions
+appear as you type in a popup and can be accepted with `Tab` — but it uses
+your own Ollama instance and the same FIM prompt engineering from the
 `ollama-fim` VS Code extension https://marketplace.visualstudio.com/items?itemName=guzmandrade-dev.ollama-fim.
 
 ## Features
 
-- **Ghost text completions** for Vim 9+ via `textprop`, with a popup fallback
-  for older Vim.
+- **Popup-based completions** rendered with `popup_atcursor`, so suggestions
+  never modify your buffer.
 - **Async `curl` backend** — no Python, Node, or LSP agent required.
 - **FIM prompt support** for five model families:
   `rnj-1`, `deepseek`, `qwen`, `gemma`, `mistral`.
@@ -21,10 +21,9 @@ uses your own Ollama instance and the same FIM prompt engineering from the
 
 ## Requirements
 
-- Vim 9.0+ recommended. Vim 8.x should mostly work but the ghost-text UI falls
-  back to a popup.
+- Vim with `popup_atcursor` support (Vim 8.2+ popup feature).
 - `curl` installed and available in `$PATH`.
-- A running Ollama server.
+- A running Ollama server or Ollama Cloud access.
 
 ## Installation
 
@@ -73,6 +72,9 @@ let g:fim_ollama_max_suffix_chars = 500
 
 " Optional: API key (falls back to $OLLAMA_API_KEY)
 let g:fim_ollama_api_key = 'your-token-here'
+
+" Optional: enable request/response logging for debugging
+let g:fim_ollama_log_file = expand('~/.fim_ollama.log')
 ```
 
 ## Usage
@@ -81,8 +83,9 @@ Suggestions appear automatically in insert mode after a short debounce. Use:
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Accept the ghost suggestion |
-| `Alt-]` | Dismiss the current suggestion |
+| `Tab` | Accept the suggestion |
+| `Alt-]` | Cycle to the next suggestion |
+| `Ctrl-]` | Cycle to the next suggestion (fallback) |
 
 Commands:
 
@@ -90,6 +93,8 @@ Commands:
 :FimOllamaEnable    " turn on completions
 :FimOllamaDisable   " turn off completions
 :FimOllamaToggle    " toggle on/off
+:FimOllamaDismiss   " dismiss current suggestion
+:FimOllamaNext      " request an alternative suggestion
 ```
 
 ## Mapping customization
@@ -112,6 +117,11 @@ imap <silent> <C-L> <Plug>(FimDismiss)
 | `gemma` | `<\|fim_prefix\|>...<\|fim_middle\|>...<\|fim_suffix\|>` | `gemma3:latest` |
 | `mistral` | `<\|fim_prefix\|>...<\|fim_suffix\|>...<\|fim_middle\|>` | `codestral:latest` |
 
+**Note on Ollama Cloud model availability:** the `rnj-1:8b-cloud` model has
+been intermittently returning `500 Internal Server Error` from Ollama Cloud.
+If completions stop appearing, check the log (`g:fim_ollama_log_file`) or try
+another FIM-capable model such as `gemma3:latest` or `codestral:latest`.
+
 ## Files
 
 ```text
@@ -122,10 +132,14 @@ vim/
 │   ├── prompt.vim               " FIM token formatting per model family
 │   ├── context.vim              " file context + current scope extraction
 │   ├── client.vim               " async curl Ollama client
-│   └── ui.vim                   " ghost text / popup UI
+│   └── ui.vim                   " popup-based suggestion UI
 └── doc/
     └── fim_ollama.txt           " Vim help documentation
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

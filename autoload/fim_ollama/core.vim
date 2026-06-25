@@ -31,7 +31,6 @@ function! s:get(name) abort
 endfunction
 
 function! fim_ollama#core#setup() abort
-    call fim_ollama#ui#init()
     let s:enabled = s:get('enabled')
 
     augroup FimOllama

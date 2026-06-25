@@ -4,6 +4,10 @@
 let s:pending_job = v:null
 let s:pending_request_id = 0
 let s:output_buffer = ''
+let s:err_output_buffer = ''
+let s:request_log = {}
+let s:last_error_msg = ''
+let s:last_error_time = 0
 
 " Build a JSON payload for Ollama /api/generate.
 function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens, temperature, ...) abort
@@ -67,12 +71,58 @@ function! s:json_string_escape(str) abort
     return '"' . l:str . '"'
 endfunction
 
+" Return the configured log file path, if any.
+function! s:log_file() abort
+    if exists('g:fim_ollama_log_file') && !empty(g:fim_ollama_log_file)
+        return g:fim_ollama_log_file
+    endif
+    return ''
+endfunction
+
+" Append a timestamped line to the log file.
+function! s:log(msg) abort
+    let l:file = s:log_file()
+    if empty(l:file)
+        return
+    endif
+    let l:line = strftime('%Y-%m-%d %H:%M:%S') . ' ' . a:msg
+    call writefile([l:line], l:file, 'a')
+endfunction
+
+" Public logging entry point so other modules can log to the same file.
+function! fim_ollama#client#log(msg) abort
+    call s:log(a:msg)
+endfunction
+
+" Show a throttled user-visible error message.
+function! s:notify_error(msg) abort
+    let l:last = get(s:, 'last_error_msg', '')
+    let l:last_time = get(s:, 'last_error_time', 0)
+    let l:now = reltimefloat(reltime())
+    " Avoid spamming the same message more than once every 10 seconds.
+    if a:msg ==# l:last && l:now - l:last_time < 10
+        return
+    endif
+    let s:last_error_msg = a:msg
+    let s:last_error_time = l:now
+    echohl ErrorMsg
+    echom '[fim-ollama] ' . a:msg
+    echohl None
+endfunction
+
 " Main entry: request a completion.
 function! fim_ollama#client#request(request_id, config, callback) abort
     call fim_ollama#client#cancel()
 
     let s:pending_request_id = a:request_id
     let s:output_buffer = ''
+    let s:err_output_buffer = ''
+    let s:request_log = {
+        \ 'request_id': a:request_id,
+        \ 'callback': a:callback,
+        \ 'config': a:config,
+        \ 'retries': 0,
+        \ }
 
     let l:seed = get(a:config, 'seed', v:null)
     let l:payload = fim_ollama#client#build_payload(
@@ -89,12 +139,16 @@ function! fim_ollama#client#request(request_id, config, callback) abort
     call writefile([l:body], l:tmpfile)
 
     let l:cmd = s:build_curl_cmd(a:config.url, l:tmpfile)
+    call s:log('REQUEST #' . a:request_id . ' model=' . a:config.model)
+    call s:log('CMD ' . s:redact_cmd(l:cmd))
+    call s:log('BODY ' . l:body)
 
     if has('job')
         let l:jobopts = {
             \ 'out_mode': 'raw',
             \ 'err_mode': 'raw',
             \ 'callback': function('s:job_output', [a:callback, a:request_id]),
+            \ 'err_cb': function('s:job_error', [a:callback, a:request_id]),
             \ 'close_cb': function('s:job_close', [a:callback, a:request_id, l:tmpfile]),
             \ }
         let s:pending_job = job_start(l:cmd, l:jobopts)
@@ -102,7 +156,7 @@ function! fim_ollama#client#request(request_id, config, callback) abort
         " Synchronous fallback for very old Vim (blocks UI, not recommended).
         let l:output = system(l:cmd)
         call delete(l:tmpfile)
-        call s:handle_output(l:output, a:callback, a:request_id)
+        call s:handle_output(l:output, '', a:callback, a:request_id)
     endif
 endfunction
 
@@ -122,8 +176,24 @@ function! s:build_curl_cmd(url, body_file) abort
     endfor
     call add(l:cmd, '-d')
     call add(l:cmd, '@' . a:body_file)
+    " Capture HTTP status code in stdout for reliable parsing on all platforms.
+    call add(l:cmd, '-w')
+    call add(l:cmd, '\nHTTP_STATUS:%{http_code}\n')
 
     return l:cmd
+endfunction
+
+" Build a human-readable command string with secrets redacted.
+function! s:redact_cmd(cmd) abort
+    let l:result = []
+    for l:part in a:cmd
+        if l:part =~# '^Authorization: Bearer '
+            call add(l:result, 'Authorization: Bearer <redacted>')
+        else
+            call add(l:result, l:part)
+        endif
+    endfor
+    return join(l:result, ' ')
 endfunction
 
 function! fim_ollama#client#cancel() abort
@@ -138,39 +208,119 @@ function! fim_ollama#client#cancel() abort
         let s:pending_job = v:null
     endif
     let s:output_buffer = ''
+    let s:err_output_buffer = ''
 endfunction
 
 function! s:job_output(callback, request_id, ch, msg) abort
     let s:output_buffer .= a:msg
 endfunction
 
-function! s:job_close(callback, request_id, tmpfile, ch) abort
-    let l:output = s:output_buffer
-    let s:output_buffer = ''
-    call delete(a:tmpfile)
-    let s:pending_job = v:null
-    call s:handle_output(l:output, a:callback, a:request_id)
+function! s:job_error(callback, request_id, ch, msg) abort
+    let s:err_output_buffer .= a:msg
 endfunction
 
-function! s:handle_output(output, callback, request_id) abort
+function! s:job_close(callback, request_id, tmpfile, ch) abort
+    let l:output = s:output_buffer
+    let l:stderr = s:err_output_buffer
+    let s:output_buffer = ''
+    let s:err_output_buffer = ''
+    call delete(a:tmpfile)
+    let s:pending_job = v:null
+    call s:handle_output(l:output, l:stderr, a:callback, a:request_id)
+endfunction
+
+" Retry the last request with the same callback and a fresh seed.
+function! s:retry_request() abort
+    if empty(get(s:request_log, 'config', {}))
+        return
+    endif
+    let s:request_log.retries += 1
+    let s:request_counter += 1
+    let l:request_id = s:request_counter
+    let s:request_log.request_id = l:request_id
+    let s:request_log.config.seed += 1
+    call s:log('RETRY #' . s:request_log.retries . ' -> new request ' . l:request_id)
+    call fim_ollama#client#request(l:request_id, s:request_log.config, s:request_log.callback)
+endfunction
+
+function! s:handle_output(output, stderr, callback, request_id) abort
     let l:trimmed = trim(a:output)
-    if empty(l:trimmed)
+    let l:status = 0
+    let l:body = l:trimmed
+
+    " Extract HTTP status appended by curl -w. It may be on its own line
+    " or immediately after the response body if the body has no trailing newline.
+    if l:body =~# 'HTTP_STATUS:'
+        let l:status_line = matchstr(l:body, 'HTTP_STATUS:\zs[0-9]*')
+        let l:status = str2nr(l:status_line)
+        let l:body = substitute(l:body, '\s*HTTP_STATUS:[0-9]*\s*$', '', '')
+        let l:body = trim(l:body)
+    endif
+
+    call s:log('RESPONSE #' . a:request_id . ' status=' . l:status)
+    call s:log('STDOUT ' . l:body)
+    if !empty(a:stderr)
+        call s:log('STDERR ' . a:stderr)
+    endif
+
+    " Surface transport-level errors first.
+    if !empty(a:stderr) && l:status == 0
+        call s:notify_error('curl error: ' . strpart(a:stderr, 0, 200))
+        return
+    endif
+
+    " Surface HTTP errors from the server.
+    if l:status >= 400
+        let l:msg = 'HTTP ' . l:status
+        if !empty(l:body)
+            let l:msg .= ': ' . strpart(l:body, 0, 200)
+        endif
+        call s:notify_error(l:msg)
+        " Retry transient server errors once, unless the user has moved on.
+        if l:status >= 500 && get(s:request_log, 'retries', 0) < 1
+            call s:log('Retrying 5xx error')
+            call s:retry_request()
+        endif
+        return
+    endif
+
+    if empty(l:body)
+        call s:notify_error('empty response from API')
         return
     endif
 
     if exists('*json_decode')
         try
-            let l:resp = json_decode(l:trimmed)
+            let l:resp = json_decode(l:body)
         catch
-            let l:resp = {}
+            call s:notify_error('invalid JSON response: ' . strpart(l:body, 0, 100))
+            return
         endtry
     else
-        let l:resp = s:manual_json_parse(l:trimmed)
+        let l:resp = s:manual_json_parse(l:body)
+    endif
+
+    if type(l:resp) != v:t_dict
+        call s:notify_error('unexpected response type')
+        return
+    endif
+
+    if has_key(l:resp, 'error') && !empty(l:resp.error)
+        let l:err = type(l:resp.error) == v:t_string ? l:resp.error : string(l:resp.error)
+        call s:notify_error('API error: ' . l:err)
+        " Retry transient model errors once.
+        if get(s:request_log, 'retries', 0) < 1
+            call s:log('Retrying API error')
+            call s:retry_request()
+        endif
+        return
     endif
 
     let l:text = get(l:resp, 'response', '')
     if type(l:text) == v:t_string && !empty(trim(l:text))
         call call(a:callback, [a:request_id, l:text])
+    else
+        call s:notify_error('empty response text from API')
     endif
 endfunction
 
