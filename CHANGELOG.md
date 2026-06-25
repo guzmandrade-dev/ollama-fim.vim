@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2026-06-24
+## [1.0.4] - 2026-06-24
 
 ### Changed
 
@@ -33,17 +33,17 @@ All notable changes to this project will be documented in this file.
 - Synchronous curl fallback now passes the correct stderr argument to the
   output handler.
 
-## [0.3.0] - earlier
+## earlier
 
 - Added file context and scope hint support.
 - Added suggestion cycling (`FimOllamaNext`).
 - Added cooldown logic to prevent repeated identical suggestions.
 - Multi-model family support: `rnj-1`, `deepseek`, `qwen`, `gemma`, `mistral`.
 
-## [0.2.0] - earlier
+## earlier
 
 - Async `curl` client, debounced requests, accept/dismiss mappings.
 
-## [0.1.0] - earlier
+## earlier
 
 - Initial release with basic FIM inline completions for `rnj-1`.
