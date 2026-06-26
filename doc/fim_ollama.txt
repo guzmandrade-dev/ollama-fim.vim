@@ -24,7 +24,7 @@ Features:
   * Async completions using curl (no Python/Node required).
   * Vim 9 ghost text via |textprop|, with a popup fallback for older Vim.
   * File-level context: imports, definitions, recent code, scope hints.
-  * Support for rnj-1, deepseek, qwen, gemma, and mistral FIM formats.
+  * Support for rnj-1, deepseek, qwen, gemma, mistral, and ministral FIM formats.
 
 ================================================================================
 2. INSTALLATION                                             *fim_ollama_install*
@@ -54,7 +54,7 @@ Set these variables in your |.vimrc|.
     Default: "rnj-1:8b-cloud"
 
 *g:fim_ollama_model_type*
-    FIM token family. One of: rnj-1, deepseek, qwen, gemma, mistral.
+    FIM token family. One of: rnj-1, deepseek, qwen, gemma, mistral, ministral.
     Default: "rnj-1"
 
 *g:fim_ollama_max_tokens*
@@ -112,10 +112,22 @@ To customize, map before the plugin loads:
 The following families are supported, matching the prompt tokens each model
 expects:
 
-    rnj-1    <|pre_fim|> ... <|suf_fim|> ... <|mid_fim|>
-    deepseek <|fim_begin|> ... <|fim_hole|> ... <|fim_end|>
-    qwen     <|fim_prefix|> ... <|fim_suffix|> ... <|fim_middle|>
-    gemma    <|fim_prefix|> ... <|fim_middle|> ... <|fim_suffix|>
-    mistral  <|fim_prefix|> ... <|fim_suffix|> ... <|fim_middle|>
+    rnj-1     <|pre_fim|> ... <|suf_fim|> ... <|mid_fim|>
+    deepseek  <|fim_begin|> ... <|fim_hole|> ... <|fim_end|>
+    qwen      <|fim_prefix|> ... <|fim_suffix|> ... <|fim_middle|>
+    gemma     <|fim_prefix|> ... <|fim_middle|> ... <|fim_suffix|>
+    mistral   <s>[SUFFIX]{suffix}[PREFIX]{prefix} (raw mode)
+    ministral <s>[SUFFIX]{suffix}[PREFIX]{prefix} (chat-template-wrapped)
+
+For `mistral` the request is sent with Ollama `raw` mode so the model's
+chat template is not applied. For `ministral`, Ollama Cloud currently
+rejects `raw` mode, so the plugin embeds the SPM markers inside a short
+code-completion instruction. Use |g:fim_ollama_system_prompt| to customize
+that instruction.
+
+*g:fim_ollama_system_prompt*
+    System/instruction prompt used for chat-template-wrapped models such
+    as `ministral`.
+    Default: see autoload/fim_ollama/prompt.vim
 
  vim:tw=78:ts=8:ft=help:norl:

@@ -11,8 +11,8 @@ your own Ollama instance and the same FIM prompt engineering from the
 - **Popup-based completions** rendered with `popup_atcursor`, so suggestions
   never modify your buffer.
 - **Async `curl` backend** — no Python, Node, or LSP agent required.
-- **FIM prompt support** for five model families:
-  `rnj-1`, `deepseek`, `qwen`, `gemma`, `mistral`.
+- **FIM prompt support** for six model families:
+  `rnj-1`, `deepseek`, `qwen`, `gemma`, `mistral`, `ministral`.
 - **File-level context** (imports, class/function signatures, recent context,
   comments) ported from the VS Code extension.
 - **Current scope hint** (e.g. `// Currently in: class Foo > method bar`).
@@ -50,7 +50,7 @@ Add to your `.vimrc` / `init.vim`:
 let g:fim_ollama_model = 'rnj-1:8b-cloud'
 
 " FIM format family. Must match the model architecture.
-" Options: 'rnj-1', 'deepseek', 'qwen', 'gemma', 'mistral'
+" Options: 'rnj-1', 'deepseek', 'qwen', 'gemma', 'mistral', 'ministral'
 let g:fim_ollama_model_type = 'rnj-1'
 
 " Optional: change Ollama host
@@ -70,8 +70,8 @@ let g:fim_ollama_debounce_ms = 300
 let g:fim_ollama_max_prefix_chars = 2000
 let g:fim_ollama_max_suffix_chars = 500
 
-" Optional: API key (falls back to $OLLAMA_API_KEY)
-let g:fim_ollama_api_key = 'your-token-here'
+" Optional: system prompt used for chat-template-wrapped models (ministral).
+let g:fim_ollama_system_prompt = 'Complete the code. Output only raw code, no explanation.'
 
 " Optional: enable request/response logging for debugging
 let g:fim_ollama_log_file = expand('~/.fim_ollama.log')
@@ -111,16 +111,23 @@ imap <silent> <C-L> <Plug>(FimDismiss)
 
 | Family | Format | Example model |
 |--------|--------|---------------|
-| `rnj-1` | `<\|pre_fim\|>...<\|suf_fim\|>...<\|mid_fim\|>` | `rnj-1:8b-cloud` |
-| `deepseek` | `<\|fim_begin\|>...<\|fim_hole\|>...<\|fim_end\|>` | `deepseek-coder-v2:lite-instruct` |
-| `qwen` | `<\|fim_prefix\|>...<\|fim_suffix\|>...<\|fim_middle\|>` | `qwen3-coder-next:latest` |
-| `gemma` | `<\|fim_prefix\|>...<\|fim_middle\|>...<\|fim_suffix\|>` | `gemma3:latest` |
-| `mistral` | `<\|fim_prefix\|>...<\|fim_suffix\|>...<\|fim_middle\|>` | `codestral:latest` |
+| `rnj-1` | `\<|pre_fim\|>...\<|suf_fim\|>...\<|mid_fim\|>` | `rnj-1:8b-cloud` |
+| `deepseek` | `\<|fim_begin\|>...\<|fim_hole\|>...\<|fim_end\|>` | `deepseek-coder-v2:lite-instruct` |
+| `qwen` | `\<|fim_prefix\|>...\<|fim_suffix\|>...\<|fim_middle\|>` | `qwen3-coder-next:latest` |
+| `gemma` | `\<|fim_prefix\|>...\<|fim_middle\|>...\<|fim_suffix\|>` | `gemma3:latest` |
+| `mistral` | `\<s\u003e[SUFFIX]{suffix}[PREFIX]{prefix}` (raw mode) | `codestral:latest` |
+| `ministral` | chat-template-wrapped SPM FIM with terse code-completion instruction (raw mode unsupported on Ollama Cloud) | `ministral-3:3b-cloud` |
 
-**Note on Ollama Cloud model availability:** the `rnj-1:8b-cloud` model has
-been intermittently returning `500 Internal Server Error` from Ollama Cloud.
-If completions stop appearing, check the log (`g:fim_ollama_log_file`) or try
-another FIM-capable model such as `gemma3:latest` or `codestral:latest`.
+**Using `mistral` / `ministral`:** `mistral` uses Ollama `raw` mode to send
+`<s>[SUFFIX]{suffix}[PREFIX]{prefix}` directly to the model. `ministral`
+does the same, but because Ollama Cloud currently rejects `raw` mode for
+`ministral-3`, the plugin embeds the SPM markers inside a short
+instruction so the chat template still produces a code completion. You
+can tweak that instruction with `g:fim_ollama_system_prompt`.
+
+```vim
+let g:fim_ollama_system_prompt = 'Complete the code. Output only raw code, no explanation.'
+```
 
 ## Files
 

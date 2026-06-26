@@ -29,6 +29,12 @@ function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens
         \ 'options': l:options,
         \ }
 
+    " Optional raw mode (bypass the model's chat template).
+    " Passed as the 7th argument; needed for Mistral-family SPM FIM.
+    if a:0 >= 2 && !empty(a:2)
+        let l:payload.raw = v:true
+    endif
+
     return l:payload
 endfunction
 
@@ -125,6 +131,7 @@ function! fim_ollama#client#request(request_id, config, callback) abort
         \ }
 
     let l:seed = get(a:config, 'seed', v:null)
+    let l:raw = get(a:config, 'raw', v:false)
     let l:payload = fim_ollama#client#build_payload(
         \ a:config.model,
         \ a:config.prompt,
@@ -132,6 +139,7 @@ function! fim_ollama#client#request(request_id, config, callback) abort
         \ a:config.max_tokens,
         \ a:config.temperature,
         \ l:seed,
+        \ l:raw,
         \ )
 
     let l:body = fim_ollama#client#json_encode(l:payload)

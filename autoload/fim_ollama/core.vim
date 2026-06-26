@@ -143,6 +143,7 @@ function! s:do_request(timer_id) abort
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': s:get('temperature'),
         \ 'seed': s:current_seed,
+        \ 'raw': fim_ollama#prompt#requires_raw(l:model_type),
         \ }
 
     call fim_ollama#client#request(l:request_id, l:config, function('s:on_completion', [l:request_id, l:bufnr, l:line, l:col]))
@@ -330,6 +331,7 @@ function! fim_ollama#core#next_suggestion() abort
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': 0.7,
         \ 'seed': s:current_seed,
+        \ 'raw': fim_ollama#prompt#requires_raw(l:model_type),
         \ }
 
     call fim_ollama#client#cancel()
