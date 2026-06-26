@@ -45,6 +45,9 @@ endif
 if !exists('g:fim_ollama_map_tab')
     let g:fim_ollama_map_tab = 1
 endif
+if !exists('g:fim_ollama_normalize_indent')
+    let g:fim_ollama_normalize_indent = 1
+endif
 
 command! FimOllamaEnable  call fim_ollama#core#setup()
 command! FimOllamaDisable call fim_ollama#core#cleanup()

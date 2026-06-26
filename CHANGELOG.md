@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2026-06-25
+
+### Added
+
+- **Native Ministral / Mistral FIM support.** New `ministral` model family
+  (and corrected `mistral` family) use the Mistral native SPM format:
+  `<s>[SUFFIX]{suffix}[PREFIX]{prefix}`.
+- **Ollama `raw` mode** is automatically enabled for the `mistral`
+  family so the model's chat template is bypassed.
+- **Chat-template fallback for Ministral:** Ollama Cloud rejects raw
+  mode for `ministral-3`, so the plugin wraps the SPM markers in a terse
+  code-completion instruction and sends it through the normal generate
+  endpoint.
+- New `g:fim_ollama_system_prompt` option to customize the instruction
+  used for chat-template-wrapped models.
+- Documented the `ministral` family in README and Vim help.
+
+### Fixed
+
+- The previous `mistral` token format (`<|fim_prefix|>`...) was not the
+  format actually expected by Codestral/Ministral models. It has been
+  corrected to the native SPM format.
+
 ## [1.0.4] - 2026-06-24
 
 ### Changed

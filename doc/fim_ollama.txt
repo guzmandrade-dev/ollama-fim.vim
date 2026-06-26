@@ -81,6 +81,13 @@ Set these variables in your |.vimrc|.
     API key sent as Bearer token. Falls back to $OLLAMA_API_KEY.
     Default: unset
 
+*g:fim_ollama_normalize_indent*
+    Normalize leading whitespace in completion text and context so it matches
+    the current buffer's indent settings (expandtab, tabstop, shiftwidth).
+    When 'expandtab' is set, tabs are expanded to spaces; when 'noexpandtab' is
+    set, spaces aligning to shiftwidth are converted to tabs.
+    Default: 1
+
 ================================================================================
 4. COMMANDS                                                *fim_ollama_commands*
 

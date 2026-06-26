@@ -1,5 +1,8 @@
 " Main orchestration: collect context, debounce, request, render.
 
+" Ensure indent normalization functions are available.
+let s:indent_module_loaded = exists('*fim_ollama#indent#normalize_text')
+
 let s:enabled = 1
 let s:debounce_timer = -1
 let s:request_counter = 0
@@ -116,6 +119,12 @@ function! s:do_request(timer_id) abort
     let l:prefix = s:get_prefix(l:bufnr, l:line, l:col)
     let l:suffix = s:get_suffix(l:bufnr, l:line, l:col)
 
+    " Normalize indentation in context to match buffer settings, so the model
+    " is primed with the user's actual tab/space style.
+    let l:indent_settings = fim_ollama#indent#get_buffer_settings(l:bufnr)
+    let l:prefix = fim_ollama#indent#normalize_text(l:prefix, l:indent_settings)
+    let l:suffix = fim_ollama#indent#normalize_text(l:suffix, l:indent_settings)
+
     " Skip when context is too thin.
     if len(trim(l:prefix)) < 10 && empty(trim(l:suffix))
         return
@@ -185,6 +194,9 @@ function! s:on_completion(request_id, bufnr, line, col, returned_request_id, tex
             return
         endif
     endif
+
+    let l:indent_settings = fim_ollama#indent#get_buffer_settings(a:bufnr)
+    let l:text = fim_ollama#indent#normalize_text(l:text, l:indent_settings)
 
     call fim_ollama#ui#show(a:bufnr, a:line, a:col, l:text)
 endfunction
@@ -316,6 +328,10 @@ function! fim_ollama#core#next_suggestion() abort
     let l:prefix = s:get_prefix(l:bufnr, l:line, l:col)
     let l:suffix = s:get_suffix(l:bufnr, l:line, l:col)
 
+    let l:indent_settings = fim_ollama#indent#get_buffer_settings(l:bufnr)
+    let l:prefix = fim_ollama#indent#normalize_text(l:prefix, l:indent_settings)
+    let l:suffix = fim_ollama#indent#normalize_text(l:suffix, l:indent_settings)
+
     let l:model_type = s:get('model_type')
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:prefix, l:suffix, l:model_type)
     let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
@@ -353,7 +369,10 @@ function! s:on_next_suggestion_completion(request_id, bufnr, line, col, returned
         return
     endif
 
-    call fim_ollama#ui#show(a:bufnr, a:line, a:col, a:text)
+    let l:indent_settings = fim_ollama#indent#get_buffer_settings(a:bufnr)
+    let l:text = fim_ollama#indent#normalize_text(a:text, l:indent_settings)
+
+    call fim_ollama#ui#show(a:bufnr, a:line, a:col, l:text)
 endfunction
 
 function! fim_ollama#core#cleanup() abort

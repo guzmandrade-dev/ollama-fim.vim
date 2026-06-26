@@ -70,6 +70,10 @@ let g:fim_ollama_debounce_ms = 300
 let g:fim_ollama_max_prefix_chars = 2000
 let g:fim_ollama_max_suffix_chars = 500
 
+" Optional: normalize indentation in completions to match buffer settings
+" (expandtab, tabstop, shiftwidth). Default: 1.
+let g:fim_ollama_normalize_indent = 1
+
 " Optional: system prompt used for chat-template-wrapped models (ministral).
 let g:fim_ollama_system_prompt = 'Complete the code. Output only raw code, no explanation.'
 
@@ -138,10 +142,28 @@ vim/
 │   ├── core.vim                 " orchestration, context gathering
 │   ├── prompt.vim               " FIM token formatting per model family
 │   ├── context.vim              " file context + current scope extraction
+│   ├── indent.vim               " indentation normalization
 │   ├── client.vim               " async curl Ollama client
 │   └── ui.vim                   " popup-based suggestion UI
 └── doc/
     └── fim_ollama.txt           " Vim help documentation
+```
+
+## Indentation handling
+
+The plugin respects your buffer's indentation settings:
+
+- When `expandtab` is set, completions are normalized so leading tab
+  characters become spaces (based on `tabstop`).
+- When `noexpandtab` is set, leading spaces that align with `shiftwidth`
+  are converted to tabs.
+- Context sent to the model is also normalized so the model is primed
+  with your current style.
+
+To disable normalization:
+
+```vim
+let g:fim_ollama_normalize_indent = 0
 ```
 
 ## Changelog
