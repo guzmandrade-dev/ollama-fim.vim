@@ -130,7 +130,7 @@ function! fim_ollama#prompt#requires_raw(model_type) abort
 
     " Qwen coder models understand raw FIM tokens; use raw mode on Ollama so
     " the chat template does not mangle the FIM prompt.
-    if a:model_type ==# 'qwen'
+    if a:model_type ==# 'qwen' || a:model_type ==# 'deepseek' || a:model_type ==# 'rnj-1'
         return 1
     endif
 
