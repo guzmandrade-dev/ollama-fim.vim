@@ -134,10 +134,11 @@ let g:fim_ollama_temperature = 0.1
 
 The `backend` setting changes the request/response shape: `ollama` sends
 Ollama's `/api/generate` payload, while `openai` sends an OpenAI
-`/v1/completions` payload. The generated code is read from
-`choices[0].text` (with a fallback to `choices[0].message.content` for
-chat-style responses). The FIM prompt tokens are still selected by
-`g:fim_ollama_model_type`.
+`/v1/completions` payload with separate `prompt` and `suffix` fields so
+providers can apply the model's native FIM template. The generated code
+is read from `choices[0].text` (with a fallback to
+`choices[0].message.content` for chat-style responses). The FIM prompt
+tokens are still selected by `g:fim_ollama_model_type`.
 
 ## Model-specific notes
 

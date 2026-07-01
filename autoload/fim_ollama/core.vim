@@ -145,15 +145,19 @@ function! s:do_request(timer_id) abort
     let l:model_type = s:get('model_type')
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:enriched_prefix, l:suffix, l:model_type)
 
-    " OpenAI-compatible /v1/completions models (e.g. Qwen via Together/Ollama)
-    " interpret stop tokens literally in the prompt text. Sending the FIM
-    " markers themselves causes immediate termination, so only send generic
-    " stop sequences in that case.
+    " OpenAI-compatible /v1/completions APIs (e.g. Qwen via Together/Ollama)
+    " often apply a chat template when only 'prompt' is provided. Sending
+    " both 'prompt' (prefix) and 'suffix' lets Ollama use the model's native
+    " FIM template instead of falling back to chat mode.
     let l:backend = s:get('backend')
     if l:backend ==# 'openai'
         let l:stop_tokens = fim_ollama#prompt#default_stop_tokens()
+        let l:payload_prompt = l:enriched_prefix
+        let l:payload_suffix = l:suffix
     else
         let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+        let l:payload_prompt = l:prompt
+        let l:payload_suffix = ''
     endif
 
     let l:config = {
@@ -161,7 +165,8 @@ function! s:do_request(timer_id) abort
         \ 'path': s:get('api_path'),
         \ 'backend': l:backend,
         \ 'model': s:get('model'),
-        \ 'prompt': l:prompt,
+        \ 'prompt': l:payload_prompt,
+        \ 'suffix': l:payload_suffix,
         \ 'stop_tokens': l:stop_tokens,
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': s:get('temperature'),
@@ -352,8 +357,12 @@ function! fim_ollama#core#next_suggestion() abort
     let l:backend = s:get('backend')
     if l:backend ==# 'openai'
         let l:stop_tokens = fim_ollama#prompt#default_stop_tokens()
+        let l:payload_prompt = l:prefix
+        let l:payload_suffix = l:suffix
     else
         let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+        let l:payload_prompt = l:prompt
+        let l:payload_suffix = ''
     endif
 
     let s:request_counter += 1
@@ -364,7 +373,8 @@ function! fim_ollama#core#next_suggestion() abort
         \ 'path': s:get('api_path'),
         \ 'backend': l:backend,
         \ 'model': s:get('model'),
-        \ 'prompt': l:prompt,
+        \ 'prompt': l:payload_prompt,
+        \ 'suffix': l:payload_suffix,
         \ 'stop_tokens': l:stop_tokens,
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': 0.7,

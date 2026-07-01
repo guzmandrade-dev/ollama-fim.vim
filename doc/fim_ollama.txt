@@ -143,10 +143,11 @@ that instruction.
 
 When using the "openai" backend, set |g:fim_ollama_api_path| to the text
 completions endpoint for your provider (e.g. "/v1/completions" on
-Together AI or local Ollama). The FIM prompt is sent as the raw prompt
-and the generated code is read from `choices[0].text`, with a fallback
-to `choices[0].message.content` for chat-style responses. The FIM prompt
-tokens are still controlled by |g:fim_ollama_model_type|.
+Together AI or local Ollama). The prefix and suffix are sent as separate
+`prompt` and `suffix` fields so the model's native FIM template is used
+when available. The generated code is read from `choices[0].text`, with
+a fallback to `choices[0].message.content` for chat-style responses. The
+FIM prompt tokens are still controlled by |g:fim_ollama_model_type|.
 Use |g:fim_ollama_system_prompt| to customize the instruction used for
 chat-template-wrapped models such as `ministral`.
 

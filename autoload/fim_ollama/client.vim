@@ -10,12 +10,15 @@ let s:last_error_msg = ''
 let s:last_error_time = 0
 
 " Build a JSON payload for the configured backend.
-" When backend is 'openai', shape matches OpenAI's /v1/completions.
+" When backend is 'openai', shape matches OpenAI's /v1/completions, using
+" both 'prompt' and 'suffix' when a suffix is provided so Ollama can apply
+" the model's native FIM template.
 " Otherwise (default 'ollama'), shape matches Ollama /api/generate.
 function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens, temperature, ...) abort
     let l:backend = a:0 >= 3 && !empty(a:3) ? a:3 : 'ollama'
     let l:seed = a:0 >= 1 && !empty(a:1) ? a:1 : v:null
     let l:raw = a:0 >= 2 && !empty(a:2) ? a:2 : v:false
+    let l:suffix = a:0 >= 4 && !empty(a:4) ? a:4 : ''
 
     if l:backend ==# 'openai'
         let l:payload = {
@@ -25,6 +28,9 @@ function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens
             \ 'temperature': a:temperature,
             \ 'stop': a:stop_tokens,
             \ }
+        if !empty(l:suffix)
+            let l:payload.suffix = l:suffix
+        endif
         if !empty(l:seed)
             let l:payload.seed = l:seed
         endif
@@ -161,6 +167,7 @@ function! fim_ollama#client#request(request_id, config, callback) abort
         \ l:seed,
         \ l:raw,
         \ get(a:config, 'backend', 'ollama'),
+        \ get(a:config, 'suffix', ''),
         \ )
 
     let l:body = fim_ollama#client#json_encode(l:payload)
