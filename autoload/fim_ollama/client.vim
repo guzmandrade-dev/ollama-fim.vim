@@ -355,11 +355,18 @@ function! s:handle_output(output, stderr, callback, request_id) abort
     endif
 
     let l:text = s:extract_response_text(l:resp, l:backend)
-    if type(l:text) == v:t_string && !empty(trim(l:text))
-        call call(a:callback, [a:request_id, l:text])
-    else
-        call s:notify_error('empty response text from API')
+    if type(l:text) != v:t_string
+        call s:notify_error('unexpected response text type')
+        return
     endif
+
+    " Whitespace-only responses are not errors; there simply is no suggestion.
+    if empty(trim(l:text))
+        call s:log('RESPONSE #' . a:request_id . ' empty text, no suggestion')
+        return
+    endif
+
+    call call(a:callback, [a:request_id, l:text])
 endfunction
 
 " Extract the generated text from an API response based on backend.
