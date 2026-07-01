@@ -12,9 +12,11 @@ let s:chars_since_accept = 999
 let s:current_seed = 0
 let s:defaults = {
     \ 'api_url': 'http://localhost:11434',
+    \ 'api_path': '/api/generate',
+    \ 'backend': 'ollama',
     \ 'model': 'rnj-1:8b-cloud',
     \ 'model_type': 'rnj-1',
-    \ 'max_tokens': 256,
+    \ 'max_tokens': 64,
     \ 'temperature': 0.1,
     \ 'enabled': 1,
     \ 'include_file_context': 1,
@@ -146,6 +148,8 @@ function! s:do_request(timer_id) abort
 
     let l:config = {
         \ 'url': s:get('api_url'),
+        \ 'path': s:get('api_path'),
+        \ 'backend': s:get('backend'),
         \ 'model': s:get('model'),
         \ 'prompt': l:prompt,
         \ 'stop_tokens': l:stop_tokens,
@@ -341,6 +345,8 @@ function! fim_ollama#core#next_suggestion() abort
 
     let l:config = {
         \ 'url': s:get('api_url'),
+        \ 'path': s:get('api_path'),
+        \ 'backend': s:get('backend'),
         \ 'model': s:get('model'),
         \ 'prompt': l:prompt,
         \ 'stop_tokens': l:stop_tokens,

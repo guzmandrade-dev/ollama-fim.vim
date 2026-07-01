@@ -12,6 +12,12 @@ endif
 if !exists('g:fim_ollama_api_url')
     let g:fim_ollama_api_url = 'http://localhost:11434'
 endif
+if !exists('g:fim_ollama_api_path')
+    let g:fim_ollama_api_path = '/api/generate'
+endif
+if !exists('g:fim_ollama_backend')
+    let g:fim_ollama_backend = 'ollama'
+endif
 if !exists('g:fim_ollama_model')
     let g:fim_ollama_model = 'rnj-1:8b-cloud'
 endif
@@ -19,7 +25,7 @@ if !exists('g:fim_ollama_model_type')
     let g:fim_ollama_model_type = 'rnj-1'
 endif
 if !exists('g:fim_ollama_max_tokens')
-    let g:fim_ollama_max_tokens = 256
+    let g:fim_ollama_max_tokens = 64
 endif
 if !exists('g:fim_ollama_temperature')
     let g:fim_ollama_temperature = 0.1

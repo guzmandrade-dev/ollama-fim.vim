@@ -9,8 +9,28 @@ let s:request_log = {}
 let s:last_error_msg = ''
 let s:last_error_time = 0
 
-" Build a JSON payload for Ollama /api/generate.
+" Build a JSON payload for the configured backend.
+" When backend is 'openai', shape matches OpenAI's /v1/completions.
+" Otherwise (default 'ollama'), shape matches Ollama /api/generate.
 function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens, temperature, ...) abort
+    let l:backend = a:0 >= 3 && !empty(a:3) ? a:3 : 'ollama'
+    let l:seed = a:0 >= 1 && !empty(a:1) ? a:1 : v:null
+    let l:raw = a:0 >= 2 && !empty(a:2) ? a:2 : v:false
+
+    if l:backend ==# 'openai'
+        let l:payload = {
+            \ 'model': a:model,
+            \ 'prompt': a:prompt,
+            \ 'max_tokens': a:max_tokens,
+            \ 'temperature': a:temperature,
+            \ 'stop': a:stop_tokens,
+            \ }
+        if !empty(l:seed)
+            let l:payload.seed = l:seed
+        endif
+        return l:payload
+    endif
+
     let l:options = {
         \ 'num_predict': a:max_tokens,
         \ 'temperature': a:temperature,
@@ -18,8 +38,8 @@ function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens
         \ }
 
     " Optional seed (for reproducible/different suggestions on cycle).
-    if a:0 >= 1 && !empty(a:1)
-        let l:options.seed = a:1
+    if !empty(l:seed)
+        let l:options.seed = l:seed
     endif
 
     let l:payload = {
@@ -30,8 +50,8 @@ function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens
         \ }
 
     " Optional raw mode (bypass the model's chat template).
-    " Passed as the 7th argument; needed for Mistral-family SPM FIM.
-    if a:0 >= 2 && !empty(a:2)
+    " Needed for Mistral-family SPM FIM.
+    if !empty(l:raw)
         let l:payload.raw = v:true
     endif
 
@@ -140,13 +160,14 @@ function! fim_ollama#client#request(request_id, config, callback) abort
         \ a:config.temperature,
         \ l:seed,
         \ l:raw,
+        \ get(a:config, 'backend', 'ollama'),
         \ )
 
     let l:body = fim_ollama#client#json_encode(l:payload)
     let l:tmpfile = tempname()
     call writefile([l:body], l:tmpfile)
 
-    let l:cmd = s:build_curl_cmd(a:config.url, l:tmpfile)
+    let l:cmd = s:build_curl_cmd(a:config.url, get(a:config, 'path', '/api/generate'), l:tmpfile)
     call s:log('REQUEST #' . a:request_id . ' model=' . a:config.model)
     call s:log('CMD ' . s:redact_cmd(l:cmd))
     call s:log('BODY ' . l:body)
@@ -168,7 +189,7 @@ function! fim_ollama#client#request(request_id, config, callback) abort
     endif
 endfunction
 
-function! s:build_curl_cmd(url, body_file) abort
+function! s:build_curl_cmd(url, path, body_file) abort
     let l:headers = ['Content-Type: application/json']
 
     if exists('g:fim_ollama_api_key') && !empty(g:fim_ollama_api_key)
@@ -177,7 +198,7 @@ function! s:build_curl_cmd(url, body_file) abort
         call add(l:headers, 'Authorization: Bearer ' . $OLLAMA_API_KEY)
     endif
 
-    let l:cmd = ['curl', '-sS', '-X', 'POST', a:url . '/api/generate']
+    let l:cmd = ['curl', '-sS', '-X', 'POST', a:url . a:path]
     for l:h in l:headers
         call add(l:cmd, '-H')
         call add(l:cmd, l:h)
@@ -313,6 +334,8 @@ function! s:handle_output(output, stderr, callback, request_id) abort
         return
     endif
 
+    let l:backend = get(get(s:request_log, 'config', {}), 'backend', 'ollama')
+
     if has_key(l:resp, 'error') && !empty(l:resp.error)
         let l:err = type(l:resp.error) == v:t_string ? l:resp.error : string(l:resp.error)
         call s:notify_error('API error: ' . l:err)
@@ -324,12 +347,28 @@ function! s:handle_output(output, stderr, callback, request_id) abort
         return
     endif
 
-    let l:text = get(l:resp, 'response', '')
+    let l:text = s:extract_response_text(l:resp, l:backend)
     if type(l:text) == v:t_string && !empty(trim(l:text))
         call call(a:callback, [a:request_id, l:text])
     else
         call s:notify_error('empty response text from API')
     endif
+endfunction
+
+" Extract the generated text from an API response based on backend.
+function! s:extract_response_text(resp, backend) abort
+    if a:backend ==# 'openai'
+        let l:choices = get(a:resp, 'choices', [])
+        if type(l:choices) == v:t_list && !empty(l:choices)
+            let l:choice = l:choices[0]
+            if type(l:choice) == v:t_dict
+                return get(l:choice, 'text', '')
+            endif
+        endif
+        return ''
+    endif
+
+    return get(a:resp, 'response', '')
 endfunction
 
 " Minimal JSON parse for response object when json_decode unavailable.

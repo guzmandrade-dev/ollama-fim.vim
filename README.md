@@ -46,18 +46,22 @@ Plug 'guzmandrade-dev/ollama-fim.vim', { 'rtp': 'vim' }
 Add to your `.vimrc` / `init.vim`:
 
 ```vim
-" Required: model running in Ollama
+" Required: model running in Ollama or an OpenAI-compatible API
 let g:fim_ollama_model = 'rnj-1:8b-cloud'
 
 " FIM format family. Must match the model architecture.
 " Options: 'rnj-1', 'deepseek', 'qwen', 'gemma', 'mistral', 'ministral'
 let g:fim_ollama_model_type = 'rnj-1'
 
-" Optional: change Ollama host
+" Backend: 'ollama' (default) or 'openai' for OpenAI-compatible providers.
+let g:fim_ollama_backend = 'ollama'
+
+" Optional: API base URL and endpoint path
 let g:fim_ollama_api_url = 'http://localhost:11434'
+let g:fim_ollama_api_path = '/api/generate'
 
 " Optional: generation controls
-let g:fim_ollama_max_tokens = 256
+let g:fim_ollama_max_tokens = 64
 let g:fim_ollama_temperature = 0.1
 
 " Optional: context awareness
@@ -111,13 +115,36 @@ imap <silent> <C-J> <Plug>(FimAccept)
 imap <silent> <C-L> <Plug>(FimDismiss)
 ```
 
+## OpenAI-compatible providers
+
+The plugin can talk to any provider that exposes an OpenAI-style text
+completions endpoint (`/v1/completions`). This includes Together AI and other
+OpenAI-compatible hosts.
+
+```vim
+let g:fim_ollama_backend = 'openai'
+let g:fim_ollama_api_url = 'https://api.together.ai/v1'
+let g:fim_ollama_api_path = '/completions'
+let g:fim_ollama_model = 'Qwen/Qwen2.5-Coder-7B-Instruct'
+let g:fim_ollama_model_type = 'qwen'
+let g:fim_ollama_api_key = '<YOUR_API_KEY>'
+let g:fim_ollama_max_tokens = 64
+let g:fim_ollama_temperature = 0.1
+```
+
+The `backend` setting changes the request/response shape: `ollama` sends
+Ollama's `/api/generate` payload, while `openai` sends an OpenAI
+`/v1/completions` payload and reads the generated text from
+`choices[0].text`. The FIM prompt tokens are still selected by
+`g:fim_ollama_model_type`.
+
 ## Model-specific notes
 
 | Family | Format | Example model |
 |--------|--------|---------------|
 | `rnj-1` | `\<|pre_fim\|>...\<|suf_fim\|>...\<|mid_fim\|>` | `rnj-1:8b-cloud` |
 | `deepseek` | `\<|fim_begin\|>...\<|fim_hole\|>...\<|fim_end\|>` | `deepseek-coder-v2:lite-instruct` |
-| `qwen` | `\<|fim_prefix\|>...\<|fim_suffix\|>...\<|fim_middle\|>` | `qwen3-coder-next:latest` |
+| `qwen` | `\<|fim_prefix\|>...\<|fim_suffix\|>...\<|fim_middle\|>` | `qwen2.5-coder:7b` |
 | `gemma` | `\<|fim_prefix\|>...\<|fim_middle\|>...\<|fim_suffix\|>` | `gemma3:latest` |
 | `mistral` | `\<s\u003e[SUFFIX]{suffix}[PREFIX]{prefix}` (raw mode) | `codestral:latest` |
 | `ministral` | chat-template-wrapped SPM FIM with terse code-completion instruction (raw mode unsupported on Ollama Cloud) | `ministral-3:3b-cloud` |

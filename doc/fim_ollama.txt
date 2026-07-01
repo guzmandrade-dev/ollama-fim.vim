@@ -16,9 +16,9 @@ CONTENTS                                                   *fim_ollama_contents*
 ================================================================================
 1. INTRODUCTION                                             *fim_ollama_intro*
 
-fim_ollama.vim provides inline code completions for Vim using local Ollama
-models. It renders ghost text as you type and uses the same FIM prompt
-engineering as the FIM Completions VS Code extension.
+fim_ollama.vim provides inline code completions for Vim using Ollama or any
+OpenAI-compatible text completions API. It renders ghost text as you type and
+uses the same FIM prompt engineering as the FIM Completions VS Code extension.
 
 Features:
   * Async completions using curl (no Python/Node required).
@@ -32,12 +32,12 @@ Features:
 With a package manager pointed at the `vim/` subdirectory (the plugin is not yet
 extracted to its own repository):
 >
-    Plug 'YOUR_NAME/fim-completions', { 'rtp': 'vim' }
+    Plug 'guzmandrade-dev/ollama-fim.vim', { 'rtp': 'vim' }
 <
 Or with Vim packages:
 >
-    git clone https://github.com/YOUR_NAME/fim-completions.git \
-        ~/.vim/pack/plugins/start/fim-completions
+    git clone https://github.com/guzmandrade-dev/ollama-fim.vim.git \
+        ~/.vim/pack/plugins/start/ollama-fim.vim
 <
 
 ================================================================================
@@ -46,11 +46,19 @@ Or with Vim packages:
 Set these variables in your |.vimrc|.
 
 *g:fim_ollama_api_url*
-    Ollama base URL.
+    API base URL.
     Default: "http://localhost:11434"
 
+*g:fim_ollama_api_path*
+    API endpoint path appended to the base URL.
+    Default: "/api/generate"
+
+*g:fim_ollama_backend*
+    Request/response backend. Either "ollama" (default) or "openai" for
+    OpenAI-compatible text completions endpoints such as Together AI.
+
 *g:fim_ollama_model*
-    Model name passed to Ollama /api/generate.
+    Model name passed to the API.
     Default: "rnj-1:8b-cloud"
 
 *g:fim_ollama_model_type*
@@ -59,7 +67,7 @@ Set these variables in your |.vimrc|.
 
 *g:fim_ollama_max_tokens*
     Maximum tokens to generate.
-    Default: 256
+    Default: 64
 
 *g:fim_ollama_temperature*
     Sampling temperature.
@@ -131,6 +139,11 @@ chat template is not applied. For `ministral`, Ollama Cloud currently
 rejects `raw` mode, so the plugin embeds the SPM markers inside a short
 code-completion instruction. Use |g:fim_ollama_system_prompt| to customize
 that instruction.
+
+When using the "openai" backend, set |g:fim_ollama_api_path| to the
+text-completions endpoint for your provider (e.g. "/v1/completions" on
+Together AI). The generated text is then read from `choices[0].text`. The
+FIM prompt tokens are still controlled by |g:fim_ollama_model_type|.
 
 *g:fim_ollama_system_prompt*
     System/instruction prompt used for chat-template-wrapped models such
