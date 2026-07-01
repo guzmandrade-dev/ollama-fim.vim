@@ -55,8 +55,8 @@ Set these variables in your |.vimrc|.
 
 *g:fim_ollama_backend*
     Request/response backend. Either "ollama" (default) or "openai" for
-    OpenAI-compatible chat completions endpoints such as Together AI or
-    local Ollama's /v1/chat/completions.
+    OpenAI-compatible text completions endpoints such as Together AI or
+    local Ollama's /v1/completions.
 
 *g:fim_ollama_model*
     Model name passed to the API.
@@ -141,13 +141,14 @@ rejects `raw` mode, so the plugin embeds the SPM markers inside a short
 code-completion instruction. Use |g:fim_ollama_system_prompt| to customize
 that instruction.
 
-When using the "openai" backend, set |g:fim_ollama_api_path| to the chat
-completions endpoint for your provider (e.g. "/v1/chat/completions" on
-Together AI or local Ollama). The FIM prompt is sent as the user message
-and the generated code is read from `choices[0].message.content`. The
-FIM prompt tokens are still controlled by |g:fim_ollama_model_type|.
-Use |g:fim_ollama_system_prompt| to customize the system message for the
-chat backend.
+When using the "openai" backend, set |g:fim_ollama_api_path| to the text
+completions endpoint for your provider (e.g. "/v1/completions" on
+Together AI or local Ollama). The FIM prompt is sent as the raw prompt
+and the generated code is read from `choices[0].text`, with a fallback
+to `choices[0].message.content` for chat-style responses. The FIM prompt
+tokens are still controlled by |g:fim_ollama_model_type|.
+Use |g:fim_ollama_system_prompt| to customize the instruction used for
+chat-template-wrapped models such as `ministral`.
 
 *g:fim_ollama_system_prompt*
     System/instruction prompt used for chat-template-wrapped models such

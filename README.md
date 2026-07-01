@@ -117,14 +117,14 @@ imap <silent> <C-L> <Plug>(FimDismiss)
 
 ## OpenAI-compatible providers
 
-The plugin can talk to any provider that exposes an OpenAI-style chat
-completions endpoint (`/v1/chat/completions`). This includes Together AI,
+The plugin can talk to any provider that exposes an OpenAI-style text
+completions endpoint (`/v1/completions`). This includes Together AI,
 local Ollama, and other OpenAI-compatible hosts.
 
 ```vim
 let g:fim_ollama_backend = 'openai'
 let g:fim_ollama_api_url = 'https://api.together.ai/v1'
-let g:fim_ollama_api_path = '/chat/completions'
+let g:fim_ollama_api_path = '/completions'
 let g:fim_ollama_model = 'Qwen/Qwen2.5-Coder-7B-Instruct'
 let g:fim_ollama_model_type = 'qwen'
 let g:fim_ollama_api_key = '<YOUR_API_KEY>'
@@ -134,13 +134,10 @@ let g:fim_ollama_temperature = 0.1
 
 The `backend` setting changes the request/response shape: `ollama` sends
 Ollama's `/api/generate` payload, while `openai` sends an OpenAI
-`/v1/chat/completions` payload. The FIM prompt is passed as the user
-message and the generated code is read from
-`choices[0].message.content`. The FIM prompt tokens are still selected
-by `g:fim_ollama_model_type`.
-
-You can override the terse system prompt used in chat mode with
-`g:fim_ollama_system_prompt`.
+`/v1/completions` payload. The generated code is read from
+`choices[0].text` (with a fallback to `choices[0].message.content` for
+chat-style responses). The FIM prompt tokens are still selected by
+`g:fim_ollama_model_type`.
 
 ## Model-specific notes
 

@@ -10,7 +10,7 @@ let s:last_error_msg = ''
 let s:last_error_time = 0
 
 " Build a JSON payload for the configured backend.
-" When backend is 'openai', shape matches OpenAI's /v1/chat/completions.
+" When backend is 'openai', shape matches OpenAI's /v1/completions.
 " Otherwise (default 'ollama'), shape matches Ollama /api/generate.
 function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens, temperature, ...) abort
     let l:backend = a:0 >= 3 && !empty(a:3) ? a:3 : 'ollama'
@@ -18,13 +18,9 @@ function! fim_ollama#client#build_payload(model, prompt, stop_tokens, max_tokens
     let l:raw = a:0 >= 2 && !empty(a:2) ? a:2 : v:false
 
     if l:backend ==# 'openai'
-        let l:system_prompt = fim_ollama#prompt#chat_system_prompt()
         let l:payload = {
             \ 'model': a:model,
-            \ 'messages': [
-            \   {'role': 'system', 'content': l:system_prompt},
-            \   {'role': 'user', 'content': a:prompt},
-            \ ],
+            \ 'prompt': a:prompt,
             \ 'max_tokens': a:max_tokens,
             \ 'temperature': a:temperature,
             \ 'stop': a:stop_tokens,
@@ -361,23 +357,21 @@ endfunction
 
 " Extract the generated text from an API response based on backend.
 function! s:extract_response_text(resp, backend) abort
-    if a:backend ==# 'openai'
-        let l:choices = get(a:resp, 'choices', [])
-        if type(l:choices) == v:t_list && !empty(l:choices)
-            let l:choice = l:choices[0]
-            if type(l:choice) == v:t_dict
-                " OpenAI chat.completions returns {message:{content:...}}.
-                " Fall back to legacy completions {text:...} if present.
-                let l:message = get(l:choice, 'message', {})
-                if type(l:message) == v:t_dict && has_key(l:message, 'content')
-                    return get(l:message, 'content', '')
-                endif
-                return get(l:choice, 'text', '')
+    let l:choices = get(a:resp, 'choices', [])
+    if type(l:choices) == v:t_list && !empty(l:choices)
+        let l:choice = l:choices[0]
+        if type(l:choice) == v:t_dict
+            " OpenAI chat.completions returns {message:{content:...}};
+            " legacy completions returns {text:...}. Prefer message content.
+            let l:message = get(l:choice, 'message', {})
+            if type(l:message) == v:t_dict && has_key(l:message, 'content')
+                return get(l:message, 'content', '')
             endif
+            return get(l:choice, 'text', '')
         endif
-        return ''
     endif
 
+    " Fallback for Ollama /api/generate shape.
     return get(a:resp, 'response', '')
 endfunction
 
