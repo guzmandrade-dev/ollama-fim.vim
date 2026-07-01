@@ -67,12 +67,12 @@ let g:fim_ollama_temperature = 0.1
 " Optional: context awareness
 let g:fim_ollama_include_file_context = 1
 let g:fim_ollama_include_scope_info = 1
-let g:fim_ollama_file_context_chars = 3000
+let g:fim_ollama_file_context_chars = 500
 
 " Optional: request debounce and context window sizes
 let g:fim_ollama_debounce_ms = 300
-let g:fim_ollama_max_prefix_chars = 2000
-let g:fim_ollama_max_suffix_chars = 500
+let g:fim_ollama_max_prefix_chars = 800
+let g:fim_ollama_max_suffix_chars = 200
 
 " Optional: normalize indentation in completions to match buffer settings
 " (expandtab, tabstop, shiftwidth). Default: 1.

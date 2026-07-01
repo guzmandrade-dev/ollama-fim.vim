@@ -37,16 +37,16 @@ if !exists('g:fim_ollama_include_scope_info')
     let g:fim_ollama_include_scope_info = 1
 endif
 if !exists('g:fim_ollama_file_context_chars')
-    let g:fim_ollama_file_context_chars = 3000
+    let g:fim_ollama_file_context_chars = 500
 endif
 if !exists('g:fim_ollama_debounce_ms')
     let g:fim_ollama_debounce_ms = 300
 endif
 if !exists('g:fim_ollama_max_prefix_chars')
-    let g:fim_ollama_max_prefix_chars = 2000
+    let g:fim_ollama_max_prefix_chars = 800
 endif
 if !exists('g:fim_ollama_max_suffix_chars')
-    let g:fim_ollama_max_suffix_chars = 500
+    let g:fim_ollama_max_suffix_chars = 200
 endif
 if !exists('g:fim_ollama_map_tab')
     let g:fim_ollama_map_tab = 1

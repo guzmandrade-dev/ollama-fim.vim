@@ -21,10 +21,10 @@ let s:defaults = {
     \ 'enabled': 1,
     \ 'include_file_context': 1,
     \ 'include_scope_info': 1,
-    \ 'file_context_chars': 3000,
+    \ 'file_context_chars': 500,
     \ 'debounce_ms': 300,
-    \ 'max_prefix_chars': 2000,
-    \ 'max_suffix_chars': 500,
+    \ 'max_prefix_chars': 800,
+    \ 'max_suffix_chars': 200,
     \ }
 
 function! s:get(name) abort

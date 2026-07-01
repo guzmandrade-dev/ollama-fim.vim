@@ -84,7 +84,19 @@ Set these variables in your |.vimrc|.
 
 *g:fim_ollama_file_context_chars*
     Max characters of file context.
-    Default: 3000
+    Default: 500
+
+*g:fim_ollama_debounce_ms*
+    Milliseconds to wait after typing before requesting a completion.
+    Default: 300
+
+*g:fim_ollama_max_prefix_chars*
+    Max characters of code before the cursor to send.
+    Default: 800
+
+*g:fim_ollama_max_suffix_chars*
+    Max characters of code after the cursor to send.
+    Default: 200
 
 *g:fim_ollama_api_key*
     API key sent as Bearer token. Falls back to $OLLAMA_API_KEY.
