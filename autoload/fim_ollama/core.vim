@@ -146,17 +146,22 @@ function! s:do_request(timer_id) abort
     let l:model_type = s:get('model_type')
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:enriched_prefix, l:suffix, l:model_type)
 
-    " OpenAI-compatible /v1/completions APIs (e.g. Qwen via Together/Ollama)
-    " often apply a chat template when only 'prompt' is provided. Sending
-    " both 'prompt' (prefix) and 'suffix' lets Ollama use the model's native
-    " FIM template instead of falling back to chat mode.
     let l:backend = s:get('backend')
-    if l:backend ==# 'openai'
+    let l:raw = exists('g:fim_ollama_raw') && g:fim_ollama_raw isnot# v:null ? g:fim_ollama_raw : fim_ollama#prompt#requires_raw(l:model_type)
+
+    " When using native FIM (raw mode or OpenAI /v1/completions with suffix),
+    " the FIM delimiter tokens are part of the input format, not output stop
+    " sequences. Sending them as stop tokens makes the model stop instantly.
+    if l:backend ==# 'openai' || l:raw
         let l:stop_tokens = fim_ollama#prompt#default_stop_tokens()
+    else
+        let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+    endif
+
+    if l:backend ==# 'openai'
         let l:payload_prompt = l:enriched_prefix
         let l:payload_suffix = l:suffix
     else
-        let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
         let l:payload_prompt = l:prompt
         let l:payload_suffix = ''
     endif
@@ -172,7 +177,7 @@ function! s:do_request(timer_id) abort
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': s:get('temperature'),
         \ 'seed': s:current_seed,
-        \ 'raw': exists('g:fim_ollama_raw') && g:fim_ollama_raw isnot# v:null ? g:fim_ollama_raw : fim_ollama#prompt#requires_raw(l:model_type),
+        \ 'raw': l:raw,
         \ }
 
     call fim_ollama#client#request(l:request_id, l:config, function('s:on_completion', [l:request_id, l:bufnr, l:line, l:col]))
@@ -356,12 +361,18 @@ function! fim_ollama#core#next_suggestion() abort
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:prefix, l:suffix, l:model_type)
 
     let l:backend = s:get('backend')
-    if l:backend ==# 'openai'
+    let l:raw = exists('g:fim_ollama_raw') && g:fim_ollama_raw isnot# v:null ? g:fim_ollama_raw : fim_ollama#prompt#requires_raw(l:model_type)
+
+    if l:backend ==# 'openai' || l:raw
         let l:stop_tokens = fim_ollama#prompt#default_stop_tokens()
+    else
+        let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+    endif
+
+    if l:backend ==# 'openai'
         let l:payload_prompt = l:prefix
         let l:payload_suffix = l:suffix
     else
-        let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
         let l:payload_prompt = l:prompt
         let l:payload_suffix = ''
     endif
@@ -380,7 +391,7 @@ function! fim_ollama#core#next_suggestion() abort
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': 0.7,
         \ 'seed': s:current_seed,
-        \ 'raw': exists('g:fim_ollama_raw') && g:fim_ollama_raw isnot# v:null ? g:fim_ollama_raw : fim_ollama#prompt#requires_raw(l:model_type),
+        \ 'raw': l:raw,
         \ }
 
     call fim_ollama#client#cancel()
