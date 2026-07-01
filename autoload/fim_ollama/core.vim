@@ -18,6 +18,7 @@ let s:defaults = {
     \ 'model_type': 'rnj-1',
     \ 'max_tokens': 64,
     \ 'temperature': 0.1,
+    \ 'raw': v:null,
     \ 'enabled': 1,
     \ 'include_file_context': 1,
     \ 'include_scope_info': 1,
@@ -171,7 +172,7 @@ function! s:do_request(timer_id) abort
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': s:get('temperature'),
         \ 'seed': s:current_seed,
-        \ 'raw': fim_ollama#prompt#requires_raw(l:model_type),
+        \ 'raw': exists('g:fim_ollama_raw') && g:fim_ollama_raw isnot# v:null ? g:fim_ollama_raw : fim_ollama#prompt#requires_raw(l:model_type),
         \ }
 
     call fim_ollama#client#request(l:request_id, l:config, function('s:on_completion', [l:request_id, l:bufnr, l:line, l:col]))
@@ -379,7 +380,7 @@ function! fim_ollama#core#next_suggestion() abort
         \ 'max_tokens': s:get('max_tokens'),
         \ 'temperature': 0.7,
         \ 'seed': s:current_seed,
-        \ 'raw': fim_ollama#prompt#requires_raw(l:model_type),
+        \ 'raw': exists('g:fim_ollama_raw') && g:fim_ollama_raw isnot# v:null ? g:fim_ollama_raw : fim_ollama#prompt#requires_raw(l:model_type),
         \ }
 
     call fim_ollama#client#cancel()

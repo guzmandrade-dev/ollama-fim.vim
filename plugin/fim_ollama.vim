@@ -51,6 +51,12 @@ endif
 if !exists('g:fim_ollama_map_tab')
     let g:fim_ollama_map_tab = 1
 endif
+if !exists('g:fim_ollama_raw')
+    " Unset by default. When set to 1, the Ollama /api/generate request is
+    " sent with raw=true, bypassing the model's chat template. Useful for
+    " models like qwen2.5-coder that understand raw FIM tokens.
+    let g:fim_ollama_raw = v:null
+endif
 if !exists('g:fim_ollama_normalize_indent')
     let g:fim_ollama_normalize_indent = 1
 endif

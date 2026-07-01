@@ -102,6 +102,13 @@ Set these variables in your |.vimrc|.
     API key sent as Bearer token. Falls back to $OLLAMA_API_KEY.
     Default: unset
 
+*g:fim_ollama_raw*
+    Force Ollama /api/generate raw mode on (1) or off (0). When unset,
+    raw mode is only used for the `mistral` family. Set to 1 for models
+    like `qwen2.5-coder` that understand raw FIM tokens but are not
+    recognized by the plugin's default raw-mode list.
+    Default: unset
+
 *g:fim_ollama_normalize_indent*
     Normalize leading whitespace in completion text and context so it matches
     the current buffer's indent settings (expandtab, tabstop, shiftwidth).
