@@ -144,12 +144,22 @@ function! s:do_request(timer_id) abort
 
     let l:model_type = s:get('model_type')
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:enriched_prefix, l:suffix, l:model_type)
-    let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+
+    " OpenAI-compatible /v1/completions models (e.g. Qwen via Together/Ollama)
+    " interpret stop tokens literally in the prompt text. Sending the FIM
+    " markers themselves causes immediate termination, so only send generic
+    " stop sequences in that case.
+    let l:backend = s:get('backend')
+    if l:backend ==# 'openai'
+        let l:stop_tokens = fim_ollama#prompt#default_stop_tokens()
+    else
+        let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+    endif
 
     let l:config = {
         \ 'url': s:get('api_url'),
         \ 'path': s:get('api_path'),
-        \ 'backend': s:get('backend'),
+        \ 'backend': l:backend,
         \ 'model': s:get('model'),
         \ 'prompt': l:prompt,
         \ 'stop_tokens': l:stop_tokens,
@@ -338,7 +348,13 @@ function! fim_ollama#core#next_suggestion() abort
 
     let l:model_type = s:get('model_type')
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:prefix, l:suffix, l:model_type)
-    let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+
+    let l:backend = s:get('backend')
+    if l:backend ==# 'openai'
+        let l:stop_tokens = fim_ollama#prompt#default_stop_tokens()
+    else
+        let l:stop_tokens = fim_ollama#prompt#all_stop_tokens(l:model_type)
+    endif
 
     let s:request_counter += 1
     let l:request_id = s:request_counter
@@ -346,7 +362,7 @@ function! fim_ollama#core#next_suggestion() abort
     let l:config = {
         \ 'url': s:get('api_url'),
         \ 'path': s:get('api_path'),
-        \ 'backend': s:get('backend'),
+        \ 'backend': l:backend,
         \ 'model': s:get('model'),
         \ 'prompt': l:prompt,
         \ 'stop_tokens': l:stop_tokens,
