@@ -29,7 +29,7 @@ let s:default_stop_tokens = [
     \ '# Notes:',
     \ ]
 
-let s:default_ministral_system_prompt = "You are a code completion assistant. The user gives you a code file with a cursor gap. Complete only the missing code between the existing prefix and suffix. Output raw code only, no markdown, no explanations, no comments like 'Here is'."
+let s:default_chat_system_prompt = "You are a code completion assistant. The user gives you a code file with a cursor gap marked by FIM tokens. Complete only the missing code between the existing prefix and suffix. Output raw code only, no markdown, no explanations, no comments like 'Here is'."
 
 function! fim_ollama#prompt#supported_models() abort
     return keys(s:fim_tokens)
@@ -40,11 +40,15 @@ function! fim_ollama#prompt#default_stop_tokens() abort
     return copy(s:default_stop_tokens)
 endfunction
 
-function! fim_ollama#prompt#ministral_system_prompt() abort
+function! fim_ollama#prompt#chat_system_prompt() abort
     if exists('g:fim_ollama_system_prompt') && !empty(g:fim_ollama_system_prompt)
         return g:fim_ollama_system_prompt
     endif
-    return s:default_ministral_system_prompt
+    return s:default_chat_system_prompt
+endfunction
+
+function! fim_ollama#prompt#ministral_system_prompt() abort
+    return fim_ollama#prompt#chat_system_prompt()
 endfunction
 
 function! fim_ollama#prompt#build_fim_prompt(prefix, suffix, model_type) abort
