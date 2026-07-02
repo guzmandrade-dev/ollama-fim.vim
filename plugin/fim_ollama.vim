@@ -31,32 +31,28 @@ if !exists('g:fim_ollama_temperature')
     let g:fim_ollama_temperature = 0.1
 endif
 if !exists('g:fim_ollama_include_file_context')
-    let g:fim_ollama_include_file_context = 1
+    let g:fim_ollama_include_file_context = 0
 endif
 if !exists('g:fim_ollama_include_scope_info')
-    let g:fim_ollama_include_scope_info = 1
+    let g:fim_ollama_include_scope_info = 0
 endif
 if !exists('g:fim_ollama_file_context_chars')
     let g:fim_ollama_file_context_chars = 500
 endif
 if !exists('g:fim_ollama_debounce_ms')
-    let g:fim_ollama_debounce_ms = 300
+    let g:fim_ollama_debounce_ms = 150
 endif
 if !exists('g:fim_ollama_max_prefix_chars')
-    let g:fim_ollama_max_prefix_chars = 800
+    let g:fim_ollama_max_prefix_chars = 200
 endif
 if !exists('g:fim_ollama_max_suffix_chars')
-    let g:fim_ollama_max_suffix_chars = 200
+    let g:fim_ollama_max_suffix_chars = 50
 endif
 if !exists('g:fim_ollama_map_tab')
     let g:fim_ollama_map_tab = 1
 endif
-if !exists('g:fim_ollama_raw')
-    " Unset by default. When set to 1, the Ollama /api/generate request is
-    " sent with raw=true, bypassing the model's chat template. Useful for
-    " models like qwen2.5-coder that understand raw FIM tokens.
-    let g:fim_ollama_raw = v:null
-endif
+" Note: raw mode is now selected automatically per model family in
+" autoload/fim_ollama/prompt.vim. There is no g:fim_ollama_raw option.
 if !exists('g:fim_ollama_normalize_indent')
     let g:fim_ollama_normalize_indent = 1
 endif

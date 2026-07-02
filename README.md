@@ -64,15 +64,15 @@ let g:fim_ollama_api_path = '/api/generate'
 let g:fim_ollama_max_tokens = 64
 let g:fim_ollama_temperature = 0.1
 
-" Optional: context awareness
+" Optional: context awareness (disabled by default)
 let g:fim_ollama_include_file_context = 1
 let g:fim_ollama_include_scope_info = 1
 let g:fim_ollama_file_context_chars = 500
 
 " Optional: request debounce and context window sizes
-let g:fim_ollama_debounce_ms = 300
-let g:fim_ollama_max_prefix_chars = 800
-let g:fim_ollama_max_suffix_chars = 200
+let g:fim_ollama_debounce_ms = 150
+let g:fim_ollama_max_prefix_chars = 200
+let g:fim_ollama_max_suffix_chars = 50
 
 " Optional: normalize indentation in completions to match buffer settings
 " (expandtab, tabstop, shiftwidth). Default: 1.

@@ -76,11 +76,11 @@ Set these variables in your |.vimrc|.
 
 *g:fim_ollama_include_file_context*
     Include file-level context (imports, definitions, comments).
-    Default: 1
+    Default: 0
 
 *g:fim_ollama_include_scope_info*
     Include "Currently in: ..." hint.
-    Default: 1
+    Default: 0
 
 *g:fim_ollama_file_context_chars*
     Max characters of file context.
@@ -88,25 +88,18 @@ Set these variables in your |.vimrc|.
 
 *g:fim_ollama_debounce_ms*
     Milliseconds to wait after typing before requesting a completion.
-    Default: 300
+    Default: 150
 
 *g:fim_ollama_max_prefix_chars*
     Max characters of code before the cursor to send.
-    Default: 800
+    Default: 200
 
 *g:fim_ollama_max_suffix_chars*
     Max characters of code after the cursor to send.
-    Default: 200
+    Default: 50
 
 *g:fim_ollama_api_key*
     API key sent as Bearer token. Falls back to $OLLAMA_API_KEY.
-    Default: unset
-
-*g:fim_ollama_raw*
-    Force Ollama /api/generate raw mode on (1) or off (0). When unset,
-    raw mode is only used for the `mistral` family. Set to 1 for models
-    like `qwen2.5-coder` that understand raw FIM tokens but are not
-    recognized by the plugin's default raw-mode list.
     Default: unset
 
 *g:fim_ollama_normalize_indent*
@@ -155,10 +148,11 @@ expects:
     ministral <s>[SUFFIX]{suffix}[PREFIX]{prefix} (chat-template-wrapped)
 
 For `mistral` the request is sent with Ollama `raw` mode so the model's
-chat template is not applied. For `ministral`, Ollama Cloud currently
-rejects `raw` mode, so the plugin embeds the SPM markers inside a short
-code-completion instruction. Use |g:fim_ollama_system_prompt| to customize
-that instruction.
+chat template is not applied. For `qwen`, `deepseek`, and `rnj-1`, raw mode
+is also used because these models understand the FIM delimiter tokens
+directly. For `ministral`, Ollama Cloud currently rejects `raw` mode, so the
+plugin embeds the SPM markers inside a short code-completion instruction.
+Use |g:fim_ollama_system_prompt| to customize that instruction.
 
 When using the "openai" backend, set |g:fim_ollama_api_path| to the text
 completions endpoint for your provider (e.g. "/v1/completions" on

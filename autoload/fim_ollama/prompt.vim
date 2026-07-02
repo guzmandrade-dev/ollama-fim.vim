@@ -122,12 +122,7 @@ function! fim_ollama#prompt#all_stop_tokens(model_type) abort
 endfunction
 
 " Return 1 if the model family requires Ollama raw mode (no chat template).
-" Users can override with g:fim_ollama_raw.
 function! fim_ollama#prompt#requires_raw(model_type) abort
-    if exists('g:fim_ollama_raw')
-        return g:fim_ollama_raw ? 1 : 0
-    endif
-
     " Qwen coder models understand raw FIM tokens; use raw mode on Ollama so
     " the chat template does not mangle the FIM prompt.
     if a:model_type ==# 'qwen' || a:model_type ==# 'deepseek' || a:model_type ==# 'rnj-1'

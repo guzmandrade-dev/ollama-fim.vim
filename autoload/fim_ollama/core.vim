@@ -20,12 +20,12 @@ let s:defaults = {
     \ 'temperature': 0.1,
     \ 'raw': v:null,
     \ 'enabled': 1,
-    \ 'include_file_context': 1,
-    \ 'include_scope_info': 1,
+    \ 'include_file_context': 0,
+    \ 'include_scope_info': 0,
     \ 'file_context_chars': 500,
-    \ 'debounce_ms': 300,
-    \ 'max_prefix_chars': 800,
-    \ 'max_suffix_chars': 200,
+    \ 'debounce_ms': 150,
+    \ 'max_prefix_chars': 200,
+    \ 'max_suffix_chars': 50,
     \ }
 
 function! s:get(name) abort
@@ -147,7 +147,7 @@ function! s:do_request(timer_id) abort
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:enriched_prefix, l:suffix, l:model_type)
 
     let l:backend = s:get('backend')
-    let l:raw = exists('g:fim_ollama_raw') && g:fim_ollama_raw isnot# v:null ? g:fim_ollama_raw : fim_ollama#prompt#requires_raw(l:model_type)
+    let l:raw = fim_ollama#prompt#requires_raw(l:model_type)
 
     " When using native FIM (raw mode or OpenAI /v1/completions with suffix),
     " the FIM delimiter tokens are part of the input format, not output stop
@@ -280,7 +280,7 @@ function! s:enrich_prefix(bufnr, cursor_line, prefix) abort
         endif
     endif
 
-    if s:get('include_scope_info')
+    if s:get('include_scope_info') && s:get('include_file_context')
         let l:scope = fim_ollama#context#extract_current_scope(a:bufnr, a:cursor_line)
         if !empty(l:scope)
             let l:prefix = '// Currently in: ' . l:scope . "\n" . l:prefix
@@ -361,7 +361,7 @@ function! fim_ollama#core#next_suggestion() abort
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:prefix, l:suffix, l:model_type)
 
     let l:backend = s:get('backend')
-    let l:raw = exists('g:fim_ollama_raw') && g:fim_ollama_raw isnot# v:null ? g:fim_ollama_raw : fim_ollama#prompt#requires_raw(l:model_type)
+    let l:raw = fim_ollama#prompt#requires_raw(l:model_type)
 
     if l:backend ==# 'openai' || l:raw
         let l:stop_tokens = fim_ollama#prompt#default_stop_tokens()

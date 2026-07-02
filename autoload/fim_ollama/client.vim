@@ -175,7 +175,7 @@ function! fim_ollama#client#request(request_id, config, callback) abort
     call writefile([l:body], l:tmpfile)
 
     let l:cmd = s:build_curl_cmd(a:config.url, get(a:config, 'path', '/api/generate'), l:tmpfile)
-    call s:log('REQUEST #' . a:request_id . ' model=' . a:config.model)
+    call s:log('REQUEST #' . a:request_id . ' model=' . a:config.model . ' raw=' . l:raw)
     call s:log('CMD ' . s:redact_cmd(l:cmd))
     call s:log('BODY ' . l:body)
 
