@@ -19,6 +19,12 @@ your own Ollama instance and the same FIM prompt engineering from the
 - **Configurable API key** via `g:fim_ollama_api_key` or the `OLLAMA_API_KEY`
   environment variable.
 
+### 
+
+<img width="500" alt="screenshot" src="https://github.com/user-attachments/assets/be5443e3-4607-4785-8c85-3106f9bde5bd" />
+
+https://github.com/user-attachments/assets/7f03061b-30a5-4eda-881e-3a46df8ffc3d
+
 ## Requirements
 
 - Vim with `popup_atcursor` support (Vim 8.2+ popup feature).
