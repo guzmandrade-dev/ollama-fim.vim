@@ -150,7 +150,7 @@ tokens are still selected by `g:fim_ollama_model_type`.
 
 | Family | Format | Example model |
 |--------|--------|---------------|
-| `rnj-1` | `<\|pre_fim\|>...<\|suf_fim\|>...<\|mid_fim\|>` | `rnj-1:8b-cloud` |
+| `rnj-1` | `<\|pre_fim\|>...<\|suf_fim\|>...<\|mid_fim\|>` | `rnj-1:8b` |
 | `deepseek` | `<\|fim_begin\|>...<\|fim_hole\|>...<\|fim_end\|>` | `deepseek-coder-v2:lite-instruct` |
 | `qwen` | `<\|fim_prefix\|>...<\|fim_suffix\|>...<\|fim_middle\|>` | `qwen2.5-coder:7b` |
 | `gemma` | `<\|fim_prefix\|>...<\|fim_middle\|>...<\|fim_suffix\|>` | `gemma3:latest` |
