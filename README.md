@@ -129,9 +129,9 @@ local Ollama, and other OpenAI-compatible hosts.
 
 ```vim
 let g:fim_ollama_backend = 'openai'
-let g:fim_ollama_api_url = 'https://api.together.ai/v1'
-let g:fim_ollama_api_path = '/completions'
-let g:fim_ollama_model = 'Qwen/Qwen2.5-Coder-7B-Instruct'
+let g:fim_ollama_api_url = 'https://api.together.xyz/v1'
+let g:fim_ollama_api_path = '/chat/completions'
+let g:fim_ollama_model = 'Qwen/Qwen3.5-9B'
 let g:fim_ollama_model_type = 'qwen'
 let g:fim_ollama_api_key = '<YOUR_API_KEY>'
 let g:fim_ollama_max_tokens = 64
