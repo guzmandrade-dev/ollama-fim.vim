@@ -29,7 +29,7 @@ https://github.com/user-attachments/assets/7f03061b-30a5-4eda-881e-3a46df8ffc3d
 
 - Vim with `popup_atcursor` support (Vim 8.2+ popup feature).
 - `curl` installed and available in `$PATH`.
-- A running Ollama server or Ollama Cloud access.
+- A running Ollama server, Ollama Cloud or an OpenAI API compatible model access.
 
 ## Installation
 
@@ -53,7 +53,7 @@ Add to your `.vimrc` / `init.vim`:
 
 ```vim
 " Required: model running in Ollama or an OpenAI-compatible API
-let g:fim_ollama_model = 'rnj-1:8b-cloud'
+let g:fim_ollama_model = 'rnj-1:8b'
 
 " FIM format family. Must match the model architecture.
 " Options: 'rnj-1', 'deepseek', 'qwen', 'gemma', 'mistral', 'ministral'
@@ -155,7 +155,7 @@ tokens are still selected by `g:fim_ollama_model_type`.
 | `qwen` | `<\|fim_prefix\|>...<\|fim_suffix\|>...<\|fim_middle\|>` | `qwen2.5-coder:7b` |
 | `gemma` | `<\|fim_prefix\|>...<\|fim_middle\|>...<\|fim_suffix\|>` | `gemma3:latest` |
 | `mistral` | `<s>[SUFFIX]{suffix}[PREFIX]{prefix}` (raw mode) | `codestral:latest` |
-| `ministral` | chat-template-wrapped SPM FIM with terse code-completion instruction (raw mode unsupported on Ollama Cloud) | `ministral-3:3b-cloud` |
+| `ministral` | chat-template-wrapped SPM FIM with terse code-completion instruction (raw mode unsupported on Ollama Cloud) | `ministral-3:3b` |
 
 **Using `mistral` / `ministral`:** `mistral` uses Ollama `raw` mode to send
 `<s>[SUFFIX]{suffix}[PREFIX]{prefix}` directly to the model. `ministral`
