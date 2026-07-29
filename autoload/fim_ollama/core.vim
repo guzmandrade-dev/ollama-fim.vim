@@ -23,6 +23,7 @@ let s:defaults = {
     \ 'include_file_context': 0,
     \ 'include_scope_info': 0,
     \ 'file_context_chars': 500,
+    \ 'use_ctags': 0,
     \ 'debounce_ms': 150,
     \ 'max_prefix_chars': 200,
     \ 'max_suffix_chars': 50,
@@ -46,6 +47,11 @@ function! fim_ollama#core#setup() abort
             autocmd TextChangedI  * call fim_ollama#core#on_text_changed()
             autocmd InsertLeave   * call fim_ollama#core#cleanup()
             autocmd CursorMovedI  * call fim_ollama#core#dismiss_if_moved()
+
+            if s:get('use_ctags')
+                autocmd BufReadPost * call fim_ollama#tags#refresh(bufnr('%'))
+                autocmd BufWritePost * call fim_ollama#tags#refresh(bufnr('%'))
+            endif
         endif
     augroup END
 endfunction

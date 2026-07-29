@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-07-29
+
+### Added
+
+- **Optional ctags-based symbol context.** When `g:fim_ollama_use_ctags` is set
+  and Universal Ctags is available in `PATH`, the plugin supplements file
+  context and the "Currently in:" scope hint with real symbol information
+  parsed from the current file. Variables are excluded to keep prompts compact.
+  Falls back to the existing regex-based extraction when ctags is unavailable
+  or returns no tags.
+- New `g:fim_ollama_use_ctags` option (default `0`).
+
+### Changed
+
+- File context budget is now split ~30% for symbols (when ctags is enabled)
+  and ~70% for recent source lines.
+
 ## [1.0.5] - 2026-06-25
 
 ### Added

@@ -39,6 +39,9 @@ endif
 if !exists('g:fim_ollama_file_context_chars')
     let g:fim_ollama_file_context_chars = 500
 endif
+if !exists('g:fim_ollama_use_ctags')
+    let g:fim_ollama_use_ctags = 0
+endif
 if !exists('g:fim_ollama_debounce_ms')
     let g:fim_ollama_debounce_ms = 150
 endif

@@ -86,6 +86,14 @@ Set these variables in your |.vimrc|.
     Max characters of file context.
     Default: 500
 
+*g:fim_ollama_use_ctags*
+    When 1, use Universal Ctags (if installed) to supplement file context
+    and the "Currently in:" scope hint with real symbol information.
+    Variables are excluded; only classes, functions, methods, types, etc.
+    are included. Falls back to regex-based extraction when ctags is
+    unavailable or returns no tags.
+    Default: 0
+
 *g:fim_ollama_debounce_ms*
     Milliseconds to wait after typing before requesting a completion.
     Default: 150

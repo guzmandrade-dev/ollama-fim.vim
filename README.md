@@ -15,6 +15,8 @@ your own Ollama instance and the same FIM prompt engineering from the
   `rnj-1`, `deepseek`, `qwen`, `gemma`, `mistral`, `ministral`.
 - **File-level context** (imports, class/function signatures, recent context,
   comments) ported from the VS Code extension.
+- **Optional ctags-based symbol context** for accurate scope and signatures
+  when Universal Ctags is installed (`g:fim_ollama_use_ctags`).
 - **Current scope hint** (e.g. `// Currently in: class Foo > method bar`).
 - **Configurable API key** via `g:fim_ollama_api_key` or the `OLLAMA_API_KEY`
   environment variable.
@@ -74,6 +76,10 @@ let g:fim_ollama_temperature = 0.1
 let g:fim_ollama_include_file_context = 1
 let g:fim_ollama_include_scope_info = 1
 let g:fim_ollama_file_context_chars = 500
+
+" Optional: use Universal Ctags for richer scope and symbol context.
+" Requires Universal Ctags in PATH. Disabled by default.
+let g:fim_ollama_use_ctags = 1
 
 " Optional: request debounce and context window sizes
 let g:fim_ollama_debounce_ms = 150
@@ -177,6 +183,7 @@ vim/
 │   ├── core.vim                 " orchestration, context gathering
 │   ├── prompt.vim               " FIM token formatting per model family
 │   ├── context.vim              " file context + current scope extraction
+│   ├── tags.vim                 " optional Universal Ctags symbol context
 │   ├── indent.vim               " indentation normalization
 │   ├── client.vim               " async curl Ollama client
 │   └── ui.vim                   " popup-based suggestion UI
