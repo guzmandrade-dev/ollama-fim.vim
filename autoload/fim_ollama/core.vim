@@ -229,6 +229,11 @@ function! s:on_completion(request_id, bufnr, line, col, returned_request_id, tex
     let l:indent_settings = fim_ollama#indent#get_buffer_settings(a:bufnr)
     let l:text = fim_ollama#indent#normalize_text(l:text, l:indent_settings)
 
+    " Trim to the next logical boundary so we don't display huge multi-line
+    " continuations as ghost text.  This is especially useful for slower local
+    " models that tend to stream long suggestions.
+    let l:text = fim_ollama#complete#trim(l:text)
+
     call fim_ollama#ui#show(a:bufnr, a:line, a:col, l:text)
 endfunction
 
@@ -421,6 +426,8 @@ function! s:on_next_suggestion_completion(request_id, bufnr, line, col, returned
 
     let l:indent_settings = fim_ollama#indent#get_buffer_settings(a:bufnr)
     let l:text = fim_ollama#indent#normalize_text(a:text, l:indent_settings)
+
+    let l:text = fim_ollama#complete#trim(l:text)
 
     call fim_ollama#ui#show(a:bufnr, a:line, a:col, l:text)
 endfunction
