@@ -12,6 +12,16 @@ let s:symbols_context_ratio = 0.3
 
 function! fim_ollama#context#extract_file_context(bufnr, cursor_line, max_chars) abort
     let l:max_chars = a:max_chars > 0 ? a:max_chars : s:default_max_context_chars
+
+    " Cache per buffer.  Context changes slowly; invalidate on explicit events
+    " in core.vim or when the cursor line moves significantly.
+    let l:cache = getbufvar(a:bufnr, 'fim_ollama_file_context')
+    if type(l:cache) == v:t_dict
+        \ && l:cache.max_chars == l:max_chars
+        \ && l:cache.cursor_line == a:cursor_line
+        return l:cache.context
+    endif
+
     let l:symbols_max_chars = float2nr(round(l:max_chars * s:symbols_context_ratio))
     let l:lines_max_chars = l:max_chars - l:symbols_max_chars
 
@@ -23,6 +33,12 @@ function! fim_ollama#context#extract_file_context(bufnr, cursor_line, max_chars)
         let l:context .= l:symbols_context . "\n"
     endif
     let l:context .= l:lines_context
+
+    call setbufvar(a:bufnr, 'fim_ollama_file_context', {
+        \ 'max_chars': l:max_chars,
+        \ 'cursor_line': a:cursor_line,
+        \ 'context': l:context,
+        \ })
 
     return l:context
 endfunction
@@ -41,30 +57,53 @@ function! fim_ollama#context#format_file_context(context, file_name, language_id
 endfunction
 
 function! fim_ollama#context#extract_current_scope(bufnr, cursor_line) abort
-    " Prefer ctags-derived scope when available; fall back to regex.
-    if get(g:, 'fim_ollama_use_ctags', 0) && fim_ollama#tags#has_cache(a:bufnr)
-        let l:scope = fim_ollama#tags#scope_stack(a:bufnr, a:cursor_line)
-        if !empty(l:scope)
-            return l:scope
-        endif
+    " Cache per buffer.  Scope changes only when the user edits structural
+    " lines, so we recompute only when the cursor line crosses a cache line
+    " boundary (±5 lines) to avoid walking the file on every keystroke.
+    let l:cache = getbufvar(a:bufnr, 'fim_ollama_scope')
+    if type(l:cache) == v:t_dict
+        \ && l:cache.cursor_line >= a:cursor_line - 5
+        \ && l:cache.cursor_line <= a:cursor_line + 5
+        return l:cache.scope
     endif
 
-    " Walk backwards looking for class/def/fn/function/struct/trait/impl/module lines.
-    let l:lines = getbufline(a:bufnr, 1, a:cursor_line)
-    let l:scope_stack = []
+    " Prefer ctags-derived scope when available; fall back to regex.
+    let l:scope = ''
+    if get(g:, 'fim_ollama_use_ctags', 0) && fim_ollama#tags#has_cache(a:bufnr)
+        let l:scope = fim_ollama#tags#scope_stack(a:bufnr, a:cursor_line)
+    endif
 
-    for l:i in range(len(l:lines) - 1, 0, -1)
-        let l:line = l:lines[l:i]
-        let l:m = matchlist(l:line, '\v^\s*(class|def|fn|func|function|struct|interface|trait|impl|module)\s+(\w+)')
-        if !empty(l:m)
-            call insert(l:scope_stack, l:m[1] . ' ' . l:m[2], 0)
-            if len(l:scope_stack) >= 3
-                break
+    if empty(l:scope)
+        " Walk backwards looking for class/def/fn/function/struct/trait/impl/module lines.
+        let l:lines = getbufline(a:bufnr, 1, a:cursor_line)
+        let l:scope_stack = []
+
+        for l:i in range(len(l:lines) - 1, 0, -1)
+            let l:line = l:lines[l:i]
+            let l:m = matchlist(l:line, '\v^\s*(class|def|fn|func|function|struct|interface|trait|impl|module)\s+(\w+)')
+            if !empty(l:m)
+                call insert(l:scope_stack, l:m[1] . ' ' . l:m[2], 0)
+                if len(l:scope_stack) >= 3
+                    break
+                endif
             endif
-        endif
-    endfor
+        endfor
 
-    return join(l:scope_stack, ' > ')
+        let l:scope = join(l:scope_stack, ' > ')
+    endif
+
+    call setbufvar(a:bufnr, 'fim_ollama_scope', {
+        \ 'cursor_line': a:cursor_line,
+        \ 'scope': l:scope,
+        \ })
+
+    return l:scope
+endfunction
+
+" Public helper to invalidate cached context when the buffer changes.
+function! fim_ollama#context#clear_cache(bufnr) abort
+    call setbufvar(a:bufnr, 'fim_ollama_file_context', {})
+    call setbufvar(a:bufnr, 'fim_ollama_scope', {})
 endfunction
 
 " ---------------------------------------------------------------------------

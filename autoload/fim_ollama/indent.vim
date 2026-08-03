@@ -3,8 +3,16 @@
 " buffer's tab/space settings.
 
 " Return the current buffer's indentation settings as a dict.
+" Settings are cached per buffer and invalidated when the relevant options
+" change, which is rare.  This avoids repeated getbufvar() calls on every
+" keystroke.
 function! fim_ollama#indent#get_buffer_settings(...) abort
     let l:bufnr = a:0 >= 1 ? a:1 : bufnr('%')
+
+    let l:cached = getbufvar(l:bufnr, 'fim_ollama_indent_settings')
+    if type(l:cached) == v:t_dict
+        return l:cached
+    endif
 
     let l:expandtab = getbufvar(l:bufnr, '&expandtab')
     let l:tabstop = getbufvar(l:bufnr, '&tabstop')
@@ -16,17 +24,25 @@ function! fim_ollama#indent#get_buffer_settings(...) abort
     " softtabstop of 0 means fall back to shiftwidth or tabstop.
     let l:soft_size = l:softtabstop > 0 ? l:softtabstop : l:indent_size
 
-    return {
+    let l:settings = {
         \ 'expandtab': !!l:expandtab,
         \ 'tabstop': max([l:tabstop, 1]),
         \ 'shiftwidth': l:indent_size,
         \ 'softtabstop': l:soft_size,
         \ }
+
+    call setbufvar(l:bufnr, 'fim_ollama_indent_settings', l:settings)
+    return l:settings
 endfunction
 
 " Check whether normalization is enabled globally.
 function! fim_ollama#indent#enabled() abort
     return !exists('g:fim_ollama_normalize_indent') || g:fim_ollama_normalize_indent
+endfunction
+
+" Public helper to invalidate cached settings when buffer options change.
+function! fim_ollama#indent#clear_cache(bufnr) abort
+    call setbufvar(a:bufnr, 'fim_ollama_indent_settings', {})
 endfunction
 
 " Normalize leading whitespace of each line in a:text according to the

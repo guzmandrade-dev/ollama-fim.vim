@@ -52,6 +52,9 @@ function! fim_ollama#core#setup() abort
                 autocmd BufReadPost * call fim_ollama#tags#refresh(bufnr('%'))
                 autocmd BufWritePost * call fim_ollama#tags#refresh(bufnr('%'))
             endif
+
+            " Invalidate cached context/indent when the buffer changes.
+            autocmd TextChanged,BufWritePost * call fim_ollama#context#clear_cache(bufnr('%')) | call fim_ollama#indent#clear_cache(bufnr('%'))
         endif
     augroup END
 endfunction
@@ -125,8 +128,12 @@ function! s:do_request(timer_id) abort
 
     let s:current_seed += 1
 
-    let l:prefix = s:get_prefix(l:bufnr, l:line, l:col)
-    let l:suffix = s:get_suffix(l:bufnr, l:line, l:col)
+    " Read all configurable values once per request instead of repeatedly
+    " probing global variables.
+    let l:cfg = s:get_config()
+
+    let l:prefix = s:get_prefix(l:bufnr, l:line, l:col, l:cfg.max_prefix_chars)
+    let l:suffix = s:get_suffix(l:bufnr, l:line, l:col, l:cfg.max_suffix_chars)
 
     " Normalize indentation in context to match buffer settings, so the model
     " is primed with the user's actual tab/space style.
@@ -147,12 +154,12 @@ function! s:do_request(timer_id) abort
         return
     endif
 
-    let l:enriched_prefix = s:enrich_prefix(l:bufnr, l:line, l:prefix)
+    let l:enriched_prefix = s:enrich_prefix(l:bufnr, l:line, l:prefix, l:cfg)
 
-    let l:model_type = s:get('model_type')
+    let l:model_type = l:cfg.model_type
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:enriched_prefix, l:suffix, l:model_type)
 
-    let l:backend = s:get('backend')
+    let l:backend = l:cfg.backend
     let l:raw = fim_ollama#prompt#requires_raw(l:model_type)
 
     " When using native FIM (raw mode or OpenAI /v1/completions with suffix),
@@ -173,23 +180,23 @@ function! s:do_request(timer_id) abort
     endif
 
     let l:config = {
-        \ 'url': s:get('api_url'),
-        \ 'path': s:get('api_path'),
+        \ 'url': l:cfg.api_url,
+        \ 'path': l:cfg.api_path,
         \ 'backend': l:backend,
-        \ 'model': s:get('model'),
+        \ 'model': l:cfg.model,
         \ 'prompt': l:payload_prompt,
         \ 'suffix': l:payload_suffix,
         \ 'stop_tokens': l:stop_tokens,
-        \ 'max_tokens': s:get('max_tokens'),
-        \ 'temperature': s:get('temperature'),
+        \ 'max_tokens': l:cfg.max_tokens,
+        \ 'temperature': l:cfg.temperature,
         \ 'seed': s:current_seed,
         \ 'raw': l:raw,
         \ }
 
-    call fim_ollama#client#request(l:request_id, l:config, function('s:on_completion', [l:request_id, l:bufnr, l:line, l:col]))
+    call fim_ollama#client#request(l:request_id, l:config, function('s:on_completion', [l:request_id, l:bufnr, l:line, l:col, l:cfg]))
 endfunction
 
-function! s:on_completion(request_id, bufnr, line, col, returned_request_id, text) abort
+function! s:on_completion(request_id, bufnr, line, col, cfg, returned_request_id, text) abort
     if a:request_id != a:returned_request_id
         return
     endif
@@ -237,8 +244,7 @@ function! s:on_completion(request_id, bufnr, line, col, returned_request_id, tex
     call fim_ollama#ui#show(a:bufnr, a:line, a:col, l:text)
 endfunction
 
-function! s:get_prefix(bufnr, line, col) abort
-    let l:max = s:get('max_prefix_chars')
+function! s:get_prefix(bufnr, line, col, max_chars) abort
     let l:lines = getbufline(a:bufnr, 1, a:line)
     if empty(l:lines)
         return ''
@@ -249,8 +255,8 @@ function! s:get_prefix(bufnr, line, col) abort
     let l:lines[-1] = l:current
 
     let l:prefix = join(l:lines, "\n")
-    if len(l:prefix) > l:max
-        let l:prefix = strpart(l:prefix, len(l:prefix) - l:max)
+    if len(l:prefix) > a:max_chars
+        let l:prefix = strpart(l:prefix, len(l:prefix) - a:max_chars)
         let l:nl = stridx(l:prefix, "\n")
         if l:nl > 0
             let l:prefix = strpart(l:prefix, l:nl + 1)
@@ -259,8 +265,7 @@ function! s:get_prefix(bufnr, line, col) abort
     return l:prefix
 endfunction
 
-function! s:get_suffix(bufnr, line, col) abort
-    let l:max = s:get('max_suffix_chars')
+function! s:get_suffix(bufnr, line, col, max_chars) abort
     let l:line_count = line('$')
     let l:lines = getbufline(a:bufnr, a:line, l:line_count)
     if empty(l:lines)
@@ -271,17 +276,17 @@ function! s:get_suffix(bufnr, line, col) abort
     let l:lines[0] = l:current
 
     let l:suffix = join(l:lines, "\n")
-    if len(l:suffix) > l:max
-        let l:suffix = strpart(l:suffix, 0, l:max)
+    if len(l:suffix) > a:max_chars
+        let l:suffix = strpart(l:suffix, 0, a:max_chars)
     endif
     return l:suffix
 endfunction
 
-function! s:enrich_prefix(bufnr, cursor_line, prefix) abort
+function! s:enrich_prefix(bufnr, cursor_line, prefix, cfg) abort
     let l:prefix = a:prefix
 
-    if s:get('include_file_context')
-        let l:max = s:get('file_context_chars')
+    if a:cfg.include_file_context
+        let l:max = a:cfg.file_context_chars
         let l:file_context = fim_ollama#context#extract_file_context(a:bufnr, a:cursor_line, l:max)
         let l:file_name = fnamemodify(bufname(a:bufnr), ':t')
         let l:lang = getbufvar(a:bufnr, '&filetype')
@@ -291,7 +296,7 @@ function! s:enrich_prefix(bufnr, cursor_line, prefix) abort
         endif
     endif
 
-    if s:get('include_scope_info') && s:get('include_file_context')
+    if a:cfg.include_scope_info && a:cfg.include_file_context
         let l:scope = fim_ollama#context#extract_current_scope(a:bufnr, a:cursor_line)
         if !empty(l:scope)
             let l:prefix = '// Currently in: ' . l:scope . "\n" . l:prefix
@@ -299,6 +304,25 @@ function! s:enrich_prefix(bufnr, cursor_line, prefix) abort
     endif
 
     return l:prefix
+endfunction
+
+" Read all configurable settings once per request.  Returns a dict with the
+" keys used by core.vim.
+function! s:get_config() abort
+    return {
+        \ 'api_url':          s:get('api_url'),
+        \ 'api_path':         s:get('api_path'),
+        \ 'backend':          s:get('backend'),
+        \ 'model':            s:get('model'),
+        \ 'model_type':       s:get('model_type'),
+        \ 'max_tokens':       s:get('max_tokens'),
+        \ 'temperature':      s:get('temperature'),
+        \ 'max_prefix_chars': s:get('max_prefix_chars'),
+        \ 'max_suffix_chars': s:get('max_suffix_chars'),
+        \ 'include_file_context': s:get('include_file_context'),
+        \ 'include_scope_info':   s:get('include_scope_info'),
+        \ 'file_context_chars':   s:get('file_context_chars'),
+        \ }
 endfunction
 
 function! fim_ollama#core#accept() abort
@@ -361,17 +385,19 @@ function! fim_ollama#core#next_suggestion() abort
 
     let s:current_seed += 1
 
-    let l:prefix = s:get_prefix(l:bufnr, l:line, l:col)
-    let l:suffix = s:get_suffix(l:bufnr, l:line, l:col)
+    let l:cfg = s:get_config()
+
+    let l:prefix = s:get_prefix(l:bufnr, l:line, l:col, l:cfg.max_prefix_chars)
+    let l:suffix = s:get_suffix(l:bufnr, l:line, l:col, l:cfg.max_suffix_chars)
 
     let l:indent_settings = fim_ollama#indent#get_buffer_settings(l:bufnr)
     let l:prefix = fim_ollama#indent#normalize_text(l:prefix, l:indent_settings)
     let l:suffix = fim_ollama#indent#normalize_text(l:suffix, l:indent_settings)
 
-    let l:model_type = s:get('model_type')
+    let l:model_type = l:cfg.model_type
     let l:prompt = fim_ollama#prompt#build_fim_prompt(l:prefix, l:suffix, l:model_type)
 
-    let l:backend = s:get('backend')
+    let l:backend = l:cfg.backend
     let l:raw = fim_ollama#prompt#requires_raw(l:model_type)
 
     if l:backend ==# 'openai' || l:raw
@@ -392,14 +418,14 @@ function! fim_ollama#core#next_suggestion() abort
     let l:request_id = s:request_counter
 
     let l:config = {
-        \ 'url': s:get('api_url'),
-        \ 'path': s:get('api_path'),
+        \ 'url': l:cfg.api_url,
+        \ 'path': l:cfg.api_path,
         \ 'backend': l:backend,
-        \ 'model': s:get('model'),
+        \ 'model': l:cfg.model,
         \ 'prompt': l:payload_prompt,
         \ 'suffix': l:payload_suffix,
         \ 'stop_tokens': l:stop_tokens,
-        \ 'max_tokens': s:get('max_tokens'),
+        \ 'max_tokens': l:cfg.max_tokens,
         \ 'temperature': 0.7,
         \ 'seed': s:current_seed,
         \ 'raw': l:raw,
@@ -408,10 +434,10 @@ function! fim_ollama#core#next_suggestion() abort
     call fim_ollama#client#cancel()
     call fim_ollama#core#cancel_debounce()
 
-    call fim_ollama#client#request(l:request_id, l:config, function('s:on_next_suggestion_completion', [l:request_id, l:bufnr, l:line, l:col]))
+    call fim_ollama#client#request(l:request_id, l:config, function('s:on_next_suggestion_completion', [l:request_id, l:bufnr, l:line, l:col, l:cfg]))
 endfunction
 
-function! s:on_next_suggestion_completion(request_id, bufnr, line, col, returned_request_id, text) abort
+function! s:on_next_suggestion_completion(request_id, bufnr, line, col, cfg, returned_request_id, text) abort
     if a:request_id != a:returned_request_id
         return
     endif
