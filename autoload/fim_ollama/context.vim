@@ -17,6 +17,9 @@ function! fim_ollama#context#extract_file_context(bufnr, cursor_line, max_chars)
     " in core.vim or when the cursor line moves significantly.
     let l:cache = getbufvar(a:bufnr, 'fim_ollama_file_context')
     if type(l:cache) == v:t_dict
+        \ && has_key(l:cache, 'max_chars')
+        \ && has_key(l:cache, 'cursor_line')
+        \ && has_key(l:cache, 'context')
         \ && l:cache.max_chars == l:max_chars
         \ && l:cache.cursor_line == a:cursor_line
         return l:cache.context
@@ -62,6 +65,8 @@ function! fim_ollama#context#extract_current_scope(bufnr, cursor_line) abort
     " boundary (±5 lines) to avoid walking the file on every keystroke.
     let l:cache = getbufvar(a:bufnr, 'fim_ollama_scope')
     if type(l:cache) == v:t_dict
+        \ && has_key(l:cache, 'cursor_line')
+        \ && has_key(l:cache, 'scope')
         \ && l:cache.cursor_line >= a:cursor_line - 5
         \ && l:cache.cursor_line <= a:cursor_line + 5
         return l:cache.scope
@@ -75,7 +80,9 @@ function! fim_ollama#context#extract_current_scope(bufnr, cursor_line) abort
 
     if empty(l:scope)
         " Walk backwards looking for class/def/fn/function/struct/trait/impl/module lines.
-        let l:lines = getbufline(a:bufnr, 1, a:cursor_line)
+        " Clamp to actual buffer size to avoid out-of-range access.
+        let l:cursor_line = min([a:cursor_line, line('$', a:bufnr)])
+        let l:lines = getbufline(a:bufnr, 1, l:cursor_line)
         let l:scope_stack = []
 
         for l:i in range(len(l:lines) - 1, 0, -1)
@@ -122,7 +129,9 @@ endfunction
 
 function! s:get_lines_context(bufnr, cursor_line, max_chars) abort
     let l:max_chars = a:max_chars > 0 ? a:max_chars : s:default_max_context_chars
-    let l:all_lines = getbufline(a:bufnr, 1, a:cursor_line)
+    " Clamp to actual buffer size so callers never pass a cursor line past EOF.
+    let l:cursor_line = min([a:cursor_line, line('$', a:bufnr)])
+    let l:all_lines = getbufline(a:bufnr, 1, l:cursor_line)
     let l:result = []
 
     " First pass: collect header/import-style lines from top of file.
@@ -146,8 +155,8 @@ function! s:get_lines_context(bufnr, cursor_line, max_chars) abort
     endif
 
     " Second pass: append the last ~50 lines before the cursor.
-    let l:recent_start = max([0, a:cursor_line - 50])
-    for l:i in range(l:recent_start, a:cursor_line - 1)
+    let l:recent_start = max([0, l:cursor_line - 50])
+    for l:i in range(l:recent_start, l:cursor_line - 1)
         call add(l:result, l:all_lines[l:i])
     endfor
 

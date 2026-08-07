@@ -286,21 +286,29 @@ function! s:enrich_prefix(bufnr, cursor_line, prefix, cfg) abort
     let l:prefix = a:prefix
 
     if a:cfg.include_file_context
-        let l:max = a:cfg.file_context_chars
-        let l:file_context = fim_ollama#context#extract_file_context(a:bufnr, a:cursor_line, l:max)
-        let l:file_name = fnamemodify(bufname(a:bufnr), ':t')
-        let l:lang = getbufvar(a:bufnr, '&filetype')
-        let l:formatted = fim_ollama#context#format_file_context(l:file_context, l:file_name, l:lang)
-        if !empty(l:formatted)
-            let l:prefix = l:formatted . l:prefix
-        endif
+        try
+            let l:max = a:cfg.file_context_chars
+            let l:file_context = fim_ollama#context#extract_file_context(a:bufnr, a:cursor_line, l:max)
+            let l:file_name = fnamemodify(bufname(a:bufnr), ':t')
+            let l:lang = getbufvar(a:bufnr, '&filetype')
+            let l:formatted = fim_ollama#context#format_file_context(l:file_context, l:file_name, l:lang)
+            if !empty(l:formatted)
+                let l:prefix = l:formatted . l:prefix
+            endif
+        catch
+            " Context extraction should never block the user.  Silently skip.
+        endtry
     endif
 
     if a:cfg.include_scope_info && a:cfg.include_file_context
-        let l:scope = fim_ollama#context#extract_current_scope(a:bufnr, a:cursor_line)
-        if !empty(l:scope)
-            let l:prefix = '// Currently in: ' . l:scope . "\n" . l:prefix
-        endif
+        try
+            let l:scope = fim_ollama#context#extract_current_scope(a:bufnr, a:cursor_line)
+            if !empty(l:scope)
+                let l:prefix = '// Currently in: ' . l:scope . "\n" . l:prefix
+            endif
+        catch
+            " Scope extraction should never block the user.  Silently skip.
+        endtry
     endif
 
     return l:prefix
