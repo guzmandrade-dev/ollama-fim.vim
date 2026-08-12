@@ -10,7 +10,7 @@ function! fim_ollama#indent#get_buffer_settings(...) abort
     let l:bufnr = a:0 >= 1 ? a:1 : bufnr('%')
 
     let l:cached = getbufvar(l:bufnr, 'fim_ollama_indent_settings')
-    if type(l:cached) == v:t_dict
+    if type(l:cached) == v:t_dict && has_key(l:cached, 'expandtab')
         return l:cached
     endif
 
