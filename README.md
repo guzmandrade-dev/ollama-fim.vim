@@ -158,6 +158,24 @@ is read from `choices[0].text` (with a fallback to
 `choices[0].message.content` for chat-style responses). The FIM prompt
 tokens are still selected by `g:fim_ollama_model_type`.
 
+### Mistral Codestral (FIM endpoint)
+
+Mistral's dedicated FIM endpoint (`https://api.mistral.ai/v1/fim/completions`)
+rejects the per-request `seed` field with HTTP 422, so set
+`g:fim_ollama_send_seed = 0`:
+
+```vim
+let g:fim_ollama_backend = 'openai'
+let g:fim_ollama_api_url = 'https://api.mistral.ai/v1'
+let g:fim_ollama_api_path = '/fim/completions'
+let g:fim_ollama_model = 'codestral-latest'
+let g:fim_ollama_model_type = 'mistral'
+let g:fim_ollama_api_key = '<YOUR_MISTRAL_API_KEY>'
+let g:fim_ollama_send_seed = 0        " required: the FIM endpoint rejects 'seed' (HTTP 422)
+let g:fim_ollama_max_tokens = 64
+let g:fim_ollama_temperature = 0.1
+```
+
 ## Model-specific notes
 
 | Family | Format | Example model |
