@@ -74,6 +74,10 @@ let g:fim_ollama_api_path = '/api/generate'
 let g:fim_ollama_max_tokens = 64
 let g:fim_ollama_temperature = 0.1
 
+" Optional: send a per-request seed so cycling suggestions varies output.
+" Set to 0 for providers that reject the field (e.g. Mistral Codestral FIM).
+let g:fim_ollama_send_seed = 1
+
 " Optional: context awareness (disabled by default)
 let g:fim_ollama_include_file_context = 1
 let g:fim_ollama_include_scope_info = 1
