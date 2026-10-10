@@ -160,13 +160,13 @@ tokens are still selected by `g:fim_ollama_model_type`.
 
 ### Mistral Codestral (FIM endpoint)
 
-Mistral's dedicated FIM endpoint (`https://api.mistral.ai/v1/fim/completions`)
+Codestral's dedicated FIM endpoint (`https://codestral.mistral.ai/v1/fim/completions`)
 rejects the per-request `seed` field with HTTP 422, so set
 `g:fim_ollama_send_seed = 0`:
 
 ```vim
 let g:fim_ollama_backend = 'openai'
-let g:fim_ollama_api_url = 'https://api.mistral.ai/v1'
+let g:fim_ollama_api_url = 'https://codestral.mistral.ai/v1'
 let g:fim_ollama_api_path = '/fim/completions'
 let g:fim_ollama_model = 'codestral-latest'
 let g:fim_ollama_model_type = 'mistral'
