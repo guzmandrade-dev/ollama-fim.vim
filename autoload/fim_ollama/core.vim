@@ -27,6 +27,7 @@ let s:defaults = {
     \ 'debounce_ms': 150,
     \ 'max_prefix_chars': 200,
     \ 'max_suffix_chars': 50,
+    \ 'send_seed': 1,
     \ }
 
 function! s:get(name) abort
@@ -189,7 +190,7 @@ function! s:do_request(timer_id) abort
         \ 'stop_tokens': l:stop_tokens,
         \ 'max_tokens': l:cfg.max_tokens,
         \ 'temperature': l:cfg.temperature,
-        \ 'seed': s:current_seed,
+        \ 'seed': s:get('send_seed') ? s:current_seed : v:null,
         \ 'raw': l:raw,
         \ }
 
@@ -435,7 +436,7 @@ function! fim_ollama#core#next_suggestion() abort
         \ 'stop_tokens': l:stop_tokens,
         \ 'max_tokens': l:cfg.max_tokens,
         \ 'temperature': 0.7,
-        \ 'seed': s:current_seed,
+        \ 'seed': s:get('send_seed') ? s:current_seed : v:null,
         \ 'raw': l:raw,
         \ }
 

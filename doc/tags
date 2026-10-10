@@ -23,6 +23,7 @@ g:fim_ollama_max_tokens	fim_ollama.txt	/*g:fim_ollama_max_tokens*
 g:fim_ollama_model	fim_ollama.txt	/*g:fim_ollama_model*
 g:fim_ollama_model_type	fim_ollama.txt	/*g:fim_ollama_model_type*
 g:fim_ollama_normalize_indent	fim_ollama.txt	/*g:fim_ollama_normalize_indent*
-g:fim_ollama_raw	fim_ollama.txt	/*g:fim_ollama_raw*
+g:fim_ollama_send_seed	fim_ollama.txt	/*g:fim_ollama_send_seed*
 g:fim_ollama_system_prompt	fim_ollama.txt	/*g:fim_ollama_system_prompt*
 g:fim_ollama_temperature	fim_ollama.txt	/*g:fim_ollama_temperature*
+g:fim_ollama_use_ctags	fim_ollama.txt	/*g:fim_ollama_use_ctags*

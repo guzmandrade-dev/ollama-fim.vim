@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-10-10
+
+### Added
+
+- New `g:fim_ollama_send_seed` option (default 1). Set it to 0 for
+  providers that reject the `seed` field in completions payloads, such
+  as the Mistral Codestral FIM endpoint, which returns HTTP 422
+  "Extra inputs are not permitted" when it is present.
+
 ## [1.2.0] - 2026-09-01
 
 ### Changed

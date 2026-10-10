@@ -76,6 +76,13 @@ Set these variables in your |.vimrc|.
     Sampling temperature.
     Default: 0.1
 
+*g:fim_ollama_send_seed*
+    When 1 (default), a per-request "seed" is sent to the API so
+    cycling suggestions yields different completions. Set to 0 for
+    providers that reject the field (e.g. Mistral Codestral FIM,
+    which returns 422 "Extra inputs are not permitted" for "seed").
+    Default: 1
+
 *g:fim_ollama_include_file_context*
     Include file-level context (imports, definitions, comments).
     Default: 0
