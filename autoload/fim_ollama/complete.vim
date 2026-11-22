@@ -18,6 +18,7 @@
 "
 " Public functions:
 "   fim_ollama#complete#trim(text)
+"   fim_ollama#complete#split_next_word(text)
 
 let s:balance_pairs = { '(': ')', '[': ']', '{': '}' }
 let s:quote_boundaries = ['"', "'", '`']
@@ -59,6 +60,53 @@ function! fim_ollama#complete#trim(text) abort
     endif
 
     return l:leading_newlines . l:result
+endfunction
+
+" Split a suggestion into the next "word" chunk and the remainder.
+" Returns [chunk, rest].  The chunk is, in order of preference:
+"   - leading spaces/tabs followed by a run of keyword characters
+"     (e.g. 'foo bar' -> ['foo', ' bar'])
+"   - leading spaces/tabs followed by a single non-newline character, so
+"     punctuation is consumed one symbol at a time (e.g. '.x' -> ['.', 'x'])
+"   - a single newline, so multi-line suggestions advance one line break
+"     at a time
+" This mirrors the word-by-word "accept next word" behaviour of tools like
+" GitHub Copilot's Ctrl+Right.  The chunk never crosses a newline.
+function! fim_ollama#complete#split_next_word(text) abort
+    if empty(a:text)
+        return ['', '']
+    endif
+
+    let l:len = len(a:text)
+    let l:i = 0
+
+    " Consume leading spaces/tabs (not newlines).
+    while l:i < l:len && (a:text[l:i] ==# ' ' || a:text[l:i] ==# "\t")
+        let l:i += 1
+    endwhile
+
+    " Only whitespace left: take it all.
+    if l:i >= l:len
+        return [a:text, '']
+    endif
+
+    let l:ch = a:text[l:i]
+
+    " A newline is its own chunk; never split across lines.
+    if l:ch ==# "\n"
+        return ["\n", strpart(a:text, 1)]
+    endif
+
+    " Keyword run: take the whole word including the leading whitespace.
+    if l:ch =~# '\k'
+        while l:i < l:len && a:text[l:i] =~# '\k'
+            let l:i += 1
+        endwhile
+        return [strpart(a:text, 0, l:i), strpart(a:text, l:i)]
+    endif
+
+    " Punctuation or any other single non-newline character.
+    return [strpart(a:text, 0, l:i + 1), strpart(a:text, l:i + 1)]
 endfunction
 
 " ---------------------------------------------------------------------------

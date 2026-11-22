@@ -3,6 +3,7 @@
 
 let s:pending_job = v:null
 let s:pending_request_id = 0
+let s:request_counter = 0
 let s:output_buffer = ''
 let s:err_output_buffer = ''
 let s:request_log = {}

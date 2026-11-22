@@ -143,12 +143,21 @@ Set these variables in your |.vimrc|.
 
 Default insert-mode mappings:
     <Tab>      Accept the current suggestion.
+    <C-Right>  Accept only the next word of the suggestion (partial accept);
+               the remainder stays visible and can be accepted word by word.
+    <C-;>      Same as <C-Right> (portable fallback for terminals that cannot
+               send <C-Right>).
     <M-]>      Cycle to the next suggestion (or request a new one from the model).
+    <C-]>      Same as <M-]> (fallback).
+
+Set g:fim_ollama_map_accept_word to 0 to disable the <C-Right>/<C-;> default
+mappings.
 
 To customize, map before the plugin loads:
 >
     imap <silent> <C-J> <Plug>(FimAccept)
-    imap <silent> <C-L> <Plug>(FimNext)
+    imap <silent> <C-L> <Plug>(FimAcceptWord)
+    imap <silent> <C-]> <Plug>(FimNext)
 <
 
 ================================================================================

@@ -54,6 +54,9 @@ endif
 if !exists('g:fim_ollama_map_tab')
     let g:fim_ollama_map_tab = 1
 endif
+if !exists('g:fim_ollama_map_accept_word')
+    let g:fim_ollama_map_accept_word = 1
+endif
 " Note: raw mode is now selected automatically per model family in
 " autoload/fim_ollama/prompt.vim. There is no g:fim_ollama_raw option.
 if !exists('g:fim_ollama_normalize_indent')
@@ -76,9 +79,16 @@ if !hasmapto('<Plug>(FimNext)')
     imap <silent> <M-]> <Plug>(FimNext)
     imap <silent> <C-]> <Plug>(FimNext)
 endif
+if g:fim_ollama_map_accept_word && !hasmapto('<Plug>(FimAcceptWord)')
+    " <C-Right> needs modifyOtherKeys or the kitty keyboard protocol in some
+    " terminals; <C-;> is the portable fallback.
+    imap <silent> <C-Right> <Plug>(FimAcceptWord)
+    imap <silent> <C-;> <Plug>(FimAcceptWord)
+endif
 
 " <Plug> handlers (non-recursive so the Tab fallback doesn't loop).
 inoremap <expr> <Plug>(FimAccept)  fim_ollama#core#accept()
+inoremap <expr> <Plug>(FimAcceptWord) fim_ollama#core#accept_word()
 inoremap <silent> <Plug>(FimDismiss) <Cmd>call fim_ollama#core#dismiss()<CR>
 inoremap <silent> <Plug>(FimNext)   <Cmd>call fim_ollama#core#next_suggestion()<CR>
 

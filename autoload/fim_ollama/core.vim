@@ -9,6 +9,9 @@ let s:request_counter = 0
 let s:accept_lock = 0
 let s:last_accepted_text = ''
 let s:chars_since_accept = 999
+" Remainder of a partially accepted suggestion, waiting to be re-shown at
+" the new cursor position once the inserted chunk settles.
+let s:pending_remainder = ''
 let s:current_seed = 0
 let s:defaults = {
     \ 'api_url': 'http://localhost:11434',
@@ -198,6 +201,8 @@ function! s:do_request(timer_id) abort
 endfunction
 
 function! s:on_completion(request_id, bufnr, line, col, cfg, returned_request_id, text) abort
+    " A fresh suggestion supersedes any pending partial-accept remainder.
+    let s:pending_remainder = ''
     if a:request_id != a:returned_request_id
         return
     endif
@@ -348,25 +353,58 @@ function! fim_ollama#core#accept() abort
     " Remember what we accepted so we can reject identical re-suggestions.
     let s:last_accepted_text = l:text
 
-    " Lock down: prevent ANY requests from firing. The lock is released
-    " by a timer after the immediate TextChangedI/InsertCharPre events
-    " from the insertion have settled. This is more reliable than
-    " clearing the lock on InsertCharPre because InsertCharPre may also
-    " fire for the returned text itself in some Vim versions.
+    call s:begin_accept_lock()
+    call fim_ollama#ui#hide()
+
+    " Insert the completion text at cursor.
+    return l:text
+endfunction
+
+" Accept only the next word of the visible suggestion (partial accept).
+" Returns the chunk to insert at the cursor; the remainder is kept pending
+" and re-shown at the new cursor position by dismiss_if_moved() once the
+" inserted chunk settles.  Falls back to a full accept when there is
+" nothing left to split, and passes the key through when no suggestion is
+" visible.
+function! fim_ollama#core#accept_word() abort
+    if !fim_ollama#ui#is_visible()
+        " Let <C-Right> pass through so the cursor still moves by word.
+        return "\<C-Right>"
+    endif
+
+    let l:text = fim_ollama#ui#get_ghost_text()
+    let [l:chunk, l:rest] = fim_ollama#complete#split_next_word(l:text)
+
+    if empty(l:chunk)
+        return fim_ollama#core#accept()
+    endif
+
+    " Accumulate accepted chunks so re-suggestions offering text we already
+    " took are still rejected.
+    let s:last_accepted_text .= l:chunk
+    let s:pending_remainder = l:rest
+    call s:begin_accept_lock()
+    call fim_ollama#ui#hide()
+
+    return l:chunk
+endfunction
+
+" Lock down after an accept: prevent ANY requests from firing. The lock is
+" released by a timer after the immediate TextChangedI/InsertCharPre events
+" from the insertion have settled. This is more reliable than clearing the
+" lock on InsertCharPre because InsertCharPre may also fire for the returned
+" text itself in some Vim versions.
+function! s:begin_accept_lock() abort
     let s:accept_lock = 1
     let s:chars_since_accept = 0
     call fim_ollama#core#cancel_debounce()
     call fim_ollama#client#cancel()
-    call fim_ollama#ui#hide()
 
     " Release the lock after 800ms. This is long enough for the
     " TextChangedI from the accepted text to settle, but short enough
     " that the user can still get a fresh suggestion after typing a few
     " characters.
     call timer_start(800, function('s:release_accept_lock'))
-
-    " Insert the completion text at cursor.
-    return l:text
 endfunction
 
 function! s:release_accept_lock(timer_id) abort
@@ -376,6 +414,7 @@ endfunction
 " Dismiss the current suggestion and cancel any pending request.
 function! fim_ollama#core#dismiss() abort
     let s:last_accepted_text = ''
+    let s:pending_remainder = ''
     call fim_ollama#ui#hide()
     call fim_ollama#client#cancel()
     call fim_ollama#core#cancel_debounce()
@@ -447,6 +486,8 @@ function! fim_ollama#core#next_suggestion() abort
 endfunction
 
 function! s:on_next_suggestion_completion(request_id, bufnr, line, col, cfg, returned_request_id, text) abort
+    " A fresh suggestion supersedes any pending partial-accept remainder.
+    let s:pending_remainder = ''
     if a:request_id != a:returned_request_id
         return
     endif
@@ -471,13 +512,28 @@ function! fim_ollama#core#cleanup() abort
     let s:accept_lock = 0
     let s:last_accepted_text = ''
     let s:chars_since_accept = 999
+    let s:pending_remainder = ''
     call fim_ollama#ui#hide()
     call fim_ollama#client#cancel()
     call fim_ollama#core#cancel_debounce()
 endfunction
 
-" Dismiss ghost text if cursor moved from the request position.
+" Dismiss ghost text if cursor moved from the request position.  If a
+" partial accept left a remainder pending, re-show that remainder at the
+" new cursor position instead of dismissing.
 function! fim_ollama#core#dismiss_if_moved() abort
+    if !empty(s:pending_remainder)
+        let l:rest = s:pending_remainder
+        let s:pending_remainder = ''
+        " A fresh suggestion may already be showing (e.g. a new request
+        " completed); never override it with the stale remainder.
+        if !fim_ollama#ui#is_visible()
+            let l:pos = getcurpos()
+            call fim_ollama#ui#show(bufnr('%'), l:pos[1], l:pos[2], l:rest)
+        endif
+        return
+    endif
+
     if fim_ollama#ui#is_visible()
         call fim_ollama#ui#hide()
     endif

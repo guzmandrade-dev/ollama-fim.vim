@@ -109,9 +109,17 @@ Suggestions appear automatically in insert mode after a short debounce. Use:
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Accept the suggestion |
+| `Tab` | Accept the whole suggestion |
+| `Ctrl-Right` | Accept only the next word of the suggestion (partial accept; the rest stays visible) |
+| `Ctrl-;` | Same as `Ctrl-Right` (fallback for terminals that can't send `Ctrl-Right`) |
 | `Alt-]` | Cycle to the next suggestion |
 | `Ctrl-]` | Cycle to the next suggestion (fallback) |
+
+Partial accept (`Ctrl-Right`) inserts one word at a time — punctuation counts
+as one symbol, and a newline counts as one step — so you can take the first
+part of a suggestion and keep typing the rest yourself. `Tab` still accepts
+everything at once. Set `g:fim_ollama_map_accept_word = 0` before loading the
+plugin to disable the default `Ctrl-Right`/`Ctrl-;` mappings.
 
 Commands:
 
@@ -130,7 +138,8 @@ plugin loads:
 
 ```vim
 imap <silent> <C-J> <Plug>(FimAccept)
-imap <silent> <C-L> <Plug>(FimDismiss)
+imap <silent> <C-L> <Plug>(FimAcceptWord)
+imap <silent> <C-K> <Plug>(FimDismiss)
 ```
 
 ## OpenAI-compatible providers

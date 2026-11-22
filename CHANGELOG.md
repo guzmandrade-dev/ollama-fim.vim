@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-11-21
+
+### Added
+
+- **Partial (word-by-word) accept.** New `<Plug>(FimAcceptWord)` mapping,
+  bound by default to `Ctrl-Right` (with `Ctrl-;` as a portable fallback),
+  accepts only the next word of the visible suggestion; the remainder stays
+  visible and can be accepted step by step. Punctuation counts as one symbol
+  and a newline as one step. `Tab` still accepts the whole suggestion.
+  Disable the default mappings with `g:fim_ollama_map_accept_word = 0`.
+- **Test suite and CI guardrails.** Headless test harness under `tests/`
+  (`bash scripts/test.sh` or `make test`), vint linting (`make lint`),
+  and a GitHub Actions workflow running the tests on Linux/macOS/Windows plus
+  a source-built Vim 8.2 (minimum supported version), vint, and gitleaks.
+
+### Fixed
+
+- `s:request_counter` in the client was used by the retry path without being
+  initialized (E121 on retry); now initialized at script load. Found by vint.
+
 ## [1.3.0] - 2026-10-10
 
 ### Added

@@ -1,0 +1,6 @@
+# vint configuration (https://github.com/Kuniwak/vint)
+# Run with: vint .   (or: make lint)
+cmdargs:
+  verbose: true
+ignores:
+  - build/**

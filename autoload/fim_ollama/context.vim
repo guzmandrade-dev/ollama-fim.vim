@@ -1,3 +1,4 @@
+scriptencoding utf-8
 " Minimal context extraction for FIM prompts.
 " Provides stable prefix enrichment without fragile regex complexity.
 " When ctags support is enabled, tag-derived symbols supplement (not
