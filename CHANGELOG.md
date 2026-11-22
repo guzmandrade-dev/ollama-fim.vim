@@ -4,11 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `make dist` (scripts/dist.sh) builds local release artifacts into `build/`:
+  `ollama-fim-<version>.vmb` (vimball) and `ollama-fim-<version>.zip` (for the
+  vim.org upload form). Version defaults to the latest git tag
+  (`make dist VERSION=1.4.1` to override). The shipped file list lives in
+  scripts/release_files.vim and is shared with the release workflow, so the
+  local zip/vmb always match the GitHub release asset.
+
 ### Changed
 
 - Removed the GitHub Actions CI workflow (tests/vint/gitleaks); verification
   is local only: `make test` and `make lint`. The release workflow that
-  builds the vimball on tag push is unchanged.
+  builds the vimball on tag push now uses the shared scripts/mkvimball.vim.
 
 ## [1.4.0] - 2026-11-21
 

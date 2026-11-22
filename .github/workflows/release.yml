@@ -47,32 +47,8 @@ jobs:
             -c 'call mkdir("build", "p")' \
             -c 'quit'
 
-          # Generate the Vimball from a temp Vim script.
-          cat > build_vimball.vim <<'VIMSCRIPT'
-            " Ship only what the published plugin needs at runtime:
-            " plugin/, autoload/, doc/, plus README and LICENSE.
-            " Dev-only files (tests/, scripts/, AGENTS.md, Makefile, CI
-            " configs, .vintrc.yaml) are intentionally excluded.
-            " Globbed so new autoload modules are picked up automatically.
-            let s:files = sort(glob('plugin/*.vim', 0, 1) + glob('autoload/*/*.vim', 0, 1) + glob('doc/*.txt', 0, 1) + ['README.md', 'LICENSE'])
-
-            let s:vmb = 'build/ollama-fim-' . $VERSION . '.vmb'
-
-            " Create the Vimball header.
-            call writefile([
-              \ '" Vimball Archiver by GitHub Action',
-              \ 'UseVimball',
-              \ 'finish',
-              \ ], s:vmb)
-
-            " Append each file with the Vimball record format.
-            for s:f in s:files
-              let s:content = readfile(s:f)
-              call writefile([s:f, len(s:content)] + s:content, s:vmb, 'a')
-            endfor
-
-            quit
-          VIMSCRIPT
+          # Generate the Vimball with the shared builder (same file list as scripts/dist.sh).
+          cp scripts/mkvimball.vim build_vimball.vim
 
           VERSION="$VERSION" vim -u NONE -N -es -c 'source build_vimball.vim'
 

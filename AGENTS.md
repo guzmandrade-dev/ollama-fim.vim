@@ -23,7 +23,10 @@ autoload/fim_ollama/
   ui.vim                         popup show/hide/accept (ghost text state)
 doc/fim_ollama.txt               Vim help doc (keep in sync with README)
 tests/                           headless test suite (see below)
-scripts/test.sh, scripts/lint.sh dev entry points; Makefile wraps them
+scripts/                           test.sh, lint.sh, dist.sh (release artifacts),
+                                   release_files.vim (shipped-file list, shared with
+                                   mkvimball.vim and the release workflow), mkzip.py
+Makefile                           wraps them: make test / make lint / make dist
 .github/workflows/release.yml    builds the .vmb for vim.org on tag push: runtime
                                  files only (plugin/, autoload/, doc/, README,
                                  LICENSE); never ship tests/, scripts/, AGENTS.md.
@@ -36,6 +39,9 @@ scripts/test.sh, scripts/lint.sh dev entry points; Makefile wraps them
 ```bash
 make test    # headless suite: vim -Nu tests/minimal.vim -n -es -S tests/run_tests.vim
 make lint    # vint .  (needs: pip install vim-vint "setuptools<81")
+make dist    # build/ollama-fim-<version>.vmb + .zip (version = latest git tag;
+             # override: make dist VERSION=1.4.1). The .zip is for the vim.org
+             # upload form; the .vmb matches the GitHub release asset.
 ```
 
 `make test` exits nonzero and prints per-test results on failure. To test
