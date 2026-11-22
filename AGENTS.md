@@ -24,10 +24,11 @@ autoload/fim_ollama/
 doc/fim_ollama.txt               Vim help doc (keep in sync with README)
 tests/                           headless test suite (see below)
 scripts/test.sh, scripts/lint.sh dev entry points; Makefile wraps them
-.github/workflows/ci.yml         tests (Linux/macOS/Windows + Vim 8.2), vint, gitleaks
-.github/workflows/release.yml    builds the .vmb for vim.org: runtime files only
-                                 (plugin/, autoload/, doc/, README, LICENSE);
-                                 never ship tests/, scripts/, AGENTS.md, CI configs
+.github/workflows/release.yml    builds the .vmb for vim.org on tag push: runtime
+                                 files only (plugin/, autoload/, doc/, README,
+                                 LICENSE); never ship tests/, scripts/, AGENTS.md.
+                                 No CI test workflow — verify locally (make test,
+                                 make lint) before pushing.
 ```
 
 ## Verify before pushing

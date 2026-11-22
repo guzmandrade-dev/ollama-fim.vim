@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Removed the GitHub Actions CI workflow (tests/vint/gitleaks); verification
+  is local only: `make test` and `make lint`. The release workflow that
+  builds the vimball on tag push is unchanged.
+
 ## [1.4.0] - 2026-11-21
 
 ### Added
